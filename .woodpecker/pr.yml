@@ -2,10 +2,6 @@
 when:
   - event: pull_request
 
-clone:
-  git:
-    lfs: false
-
 steps:
   - name: restore
     image: mcr.microsoft.com/dotnet/sdk:10.0-preview
