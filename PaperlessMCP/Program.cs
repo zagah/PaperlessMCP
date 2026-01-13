@@ -46,7 +46,7 @@ else
     var port = app.Configuration.GetValue<int?>("Mcp:Port")
                ?? (Environment.GetEnvironmentVariable("MCP_PORT") is string portStr && int.TryParse(portStr, out var p) ? p : 5000);
 
-    app.MapMcp();
+    app.MapMcp("/mcp");
 
     app.Logger.LogInformation("PaperlessMCP server starting on port {Port}", port);
     app.Logger.LogInformation("MCP endpoint available at: http://localhost:{Port}/mcp", port);
