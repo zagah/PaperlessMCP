@@ -2,53 +2,124 @@ variables:
   - &dotnet_image "mcr.microsoft.com/dotnet/sdk:10.0-preview"
   - &docker_image "woodpeckerci/plugin-docker-buildx"
 
+# =============================================================================
+# PULL REQUESTS - Build and test only
+# =============================================================================
 when:
-  - event: [push, pull_request, tag]
+  - event: pull_request
 
 steps:
-  # Restore dependencies
+  pr-restore:
+    image: *dotnet_image
+    commands:
+      - dotnet restore
+
+  pr-build:
+    image: *dotnet_image
+    commands:
+      - dotnet build --no-restore -c Release
+    depends_on: [pr-restore]
+
+  pr-test:
+    image: *dotnet_image
+    commands:
+      - dotnet test --no-build -c Release --logger "console;verbosity=detailed"
+    depends_on: [pr-build]
+
+  pr-docker-verify:
+    image: *docker_image
+    settings:
+      repo: ghcr.io/barryw/paperlessmcp
+      dockerfile: PaperlessMCP/Dockerfile
+      context: PaperlessMCP
+      dry_run: true
+    depends_on: [pr-test]
+
+---
+# =============================================================================
+# MAIN BRANCH - Build, test, version, release
+# =============================================================================
+when:
+  - event: push
+    branch: main
+
+steps:
   restore:
     image: *dotnet_image
     commands:
       - dotnet restore
 
-  # Build the project
   build:
     image: *dotnet_image
     commands:
       - dotnet build --no-restore -c Release
     depends_on: [restore]
 
-  # Run tests
   test:
     image: *dotnet_image
     commands:
       - dotnet test --no-build -c Release --logger "console;verbosity=detailed"
     depends_on: [build]
 
-  # Determine version from git tags
+  # Determine next version based on conventional commits
   version:
     image: alpine/git
     commands:
+      - apk add --no-cache bash
       - |
-        if [ -n "$CI_COMMIT_TAG" ]; then
-          # Use tag as version (strip 'v' prefix if present)
-          VERSION=$(echo "$CI_COMMIT_TAG" | sed 's/^v//')
+        # Get the latest tag or default to v0.0.0
+        LATEST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "v0.0.0")
+        echo "Latest tag: $LATEST_TAG"
+
+        # Parse current version
+        VERSION=${LATEST_TAG#v}
+        MAJOR=$(echo $VERSION | cut -d. -f1)
+        MINOR=$(echo $VERSION | cut -d. -f2)
+        PATCH=$(echo $VERSION | cut -d. -f3)
+
+        # Get commits since last tag
+        if [ "$LATEST_TAG" = "v0.0.0" ]; then
+          COMMITS=$(git log --pretty=format:"%s" HEAD)
         else
-          # Generate dev version from branch and short SHA
-          BRANCH=$(echo "$CI_COMMIT_BRANCH" | sed 's/[^a-zA-Z0-9]/-/g')
-          SHORT_SHA=$(echo "$CI_COMMIT_SHA" | cut -c1-7)
-          # Get latest tag or default to 0.0.0
-          LATEST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "v0.0.0")
-          BASE_VERSION=$(echo "$LATEST_TAG" | sed 's/^v//')
-          VERSION="${BASE_VERSION}-dev.${BRANCH}.${SHORT_SHA}"
+          COMMITS=$(git log --pretty=format:"%s" ${LATEST_TAG}..HEAD)
         fi
-        echo "$VERSION" > .version
-        echo "Building version: $VERSION"
+
+        # Determine bump type from conventional commits
+        BUMP="patch"
+        if echo "$COMMITS" | grep -qiE "^feat(\(.+\))?!:|BREAKING CHANGE:"; then
+          BUMP="major"
+        elif echo "$COMMITS" | grep -qiE "^feat(\(.+\))?:"; then
+          BUMP="minor"
+        fi
+
+        echo "Bump type: $BUMP"
+
+        # Calculate new version
+        case $BUMP in
+          major)
+            MAJOR=$((MAJOR + 1))
+            MINOR=0
+            PATCH=0
+            ;;
+          minor)
+            MINOR=$((MINOR + 1))
+            PATCH=0
+            ;;
+          patch)
+            PATCH=$((PATCH + 1))
+            ;;
+        esac
+
+        NEW_VERSION="${MAJOR}.${MINOR}.${PATCH}"
+        echo "New version: $NEW_VERSION"
+
+        # Save version for other steps
+        echo "$NEW_VERSION" > .version
+        echo "v${NEW_VERSION}" > .tag
     depends_on: [test]
 
-  # Package as NuGet (for library distribution)
-  package-nuget:
+  # Package NuGet
+  package:
     image: *dotnet_image
     commands:
       - VERSION=$(cat .version)
@@ -56,12 +127,19 @@ steps:
       - dotnet pack PaperlessMCP/PaperlessMCP.csproj --no-build -c Release -o ./artifacts /p:Version=$VERSION /p:PackageVersion=$VERSION
       - ls -la ./artifacts/
     depends_on: [version]
-    when:
-      - event: [push, tag]
-        branch: main
 
-  # Build and push Docker image (main branch - dev tag)
-  docker-dev:
+  # Prepare Docker tags
+  docker-tags:
+    image: alpine
+    commands:
+      - VERSION=$(cat .version)
+      - echo "latest" > .docker-tags
+      - echo "v${VERSION}" >> .docker-tags
+      - cat .docker-tags
+    depends_on: [version]
+
+  # Build and push Docker
+  docker:
     image: *docker_image
     settings:
       repo: ghcr.io/barryw/paperlessmcp
@@ -70,54 +148,34 @@ steps:
       platforms:
         - linux/amd64
         - linux/arm64
-      tag: dev
+      tags_file: .docker-tags
       registry: ghcr.io
       username:
         from_secret: github_username
       password:
         from_secret: github_token
-    depends_on: [version]
-    when:
-      - event: push
-        branch: main
+    depends_on: [docker-tags]
 
-  # Build and push Docker image (tags - release)
-  docker-release:
-    image: *docker_image
-    settings:
-      repo: ghcr.io/barryw/paperlessmcp
-      dockerfile: PaperlessMCP/Dockerfile
-      context: PaperlessMCP
-      platforms:
-        - linux/amd64
-        - linux/arm64
-      tag: [latest, "${CI_COMMIT_TAG}"]
-      build_args:
-        - VERSION=${CI_COMMIT_TAG}
-      registry: ghcr.io
-      username:
-        from_secret: github_username
-      password:
-        from_secret: github_token
-    depends_on: [version]
-    when:
-      - event: tag
+  # Create git tag and push
+  git-tag:
+    image: alpine/git
+    secrets: [github_token]
+    commands:
+      - TAG=$(cat .tag)
+      - VERSION=$(cat .version)
+      - echo "Creating tag $TAG"
+      - |
+        # Configure git for pushing
+        git config user.email "ci@woodpecker.local"
+        git config user.name "Woodpecker CI"
+        git remote set-url origin https://x-access-token:${GITHUB_TOKEN}@github.com/barryw/PaperlessMCP.git
 
-  # Build Docker for PRs (no push, just verify it builds)
-  docker-verify:
-    image: *docker_image
-    settings:
-      repo: ghcr.io/barryw/paperlessmcp
-      dockerfile: PaperlessMCP/Dockerfile
-      context: PaperlessMCP
-      platforms:
-        - linux/amd64
-      dry_run: true
-    depends_on: [version]
-    when:
-      - event: pull_request
+        # Create and push tag
+        git tag -a "$TAG" -m "Release $VERSION"
+        git push origin "$TAG"
+    depends_on: [package, docker]
 
-  # Create GitHub release (tags only)
+  # Create GitHub release
   release:
     image: woodpeckerci/plugin-github-release
     settings:
@@ -125,7 +183,5 @@ steps:
         from_secret: github_token
       files:
         - artifacts/*.nupkg
-      title: ${CI_COMMIT_TAG}
-    depends_on: [package-nuget, docker-release]
-    when:
-      - event: tag
+      prerelease: false
+    depends_on: [git-tag]

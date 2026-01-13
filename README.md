@@ -141,24 +141,23 @@ dotnet test         # Run tests
 
 ### CI/CD
 
-This project uses [Woodpecker CI](https://woodpecker-ci.org/) for continuous integration:
+This project uses [Woodpecker CI](https://woodpecker-ci.org/) with trunk-based development:
 
 | Event | Actions |
 |-------|---------|
-| **Push/PR** | Build → Test |
-| **Push to main** | Build → Test → Package NuGet |
-| **Tag (vX.Y.Z)** | Build → Test → Package → Docker → GitHub Release |
+| **Pull Request** | Build → Test → Docker verify |
+| **Merge to main** | Build → Test → Version → Package → Docker → Tag → Release |
 
-**Versioning:** Semantic versioning via git tags. Create a release with:
+**Automatic Versioning:** Version bumps are determined by [Conventional Commits](https://www.conventionalcommits.org/):
 
-```bash
-git tag v1.0.0
-git push origin v1.0.0
-```
+| Commit Type | Version Bump | Example |
+|-------------|--------------|---------|
+| `fix:` | Patch (0.0.X) | `fix: handle null response` |
+| `feat:` | Minor (0.X.0) | `feat: add bulk export` |
+| `feat!:` | Major (X.0.0) | `feat!: change API format` |
 
 **Docker Images:**
 - `ghcr.io/barryw/paperlessmcp:latest` — Latest release
-- `ghcr.io/barryw/paperlessmcp:dev` — Latest main branch
 - `ghcr.io/barryw/paperlessmcp:vX.Y.Z` — Specific version
 
 ### Project Structure
@@ -178,12 +177,12 @@ PaperlessMCP/
 
 ## 🤝 Contributing
 
-Contributions welcome! Please:
+Contributions welcome! We use trunk-based development with conventional commits.
 
-1. Fork the repository
-2. Create a feature branch
-3. Write tests for new functionality
-4. Submit a pull request
+See **[CONTRIBUTING.md](CONTRIBUTING.md)** for guidelines on:
+- Commit message format
+- Pull request process
+- Local development setup
 
 ---
 
