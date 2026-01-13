@@ -1,0 +1,37 @@
+#!/bin/sh
+# Conventional Commits validation hook
+# https://www.conventionalcommits.org/
+
+commit_msg_file="$1"
+commit_msg=$(cat "$commit_msg_file")
+
+# Skip merge commits
+if echo "$commit_msg" | grep -qE "^Merge "; then
+  exit 0
+fi
+
+# Conventional commit pattern
+# type(scope)?: description
+# type!: breaking change
+pattern="^(feat|fix|docs|style|refactor|perf|test|build|ci|chore|revert)(\(.+\))?\!?: .{1,}"
+
+if ! echo "$commit_msg" | grep -qE "$pattern"; then
+  echo ""
+  echo "ERROR: Commit message does not follow Conventional Commits format."
+  echo ""
+  echo "Your message:"
+  echo "  $commit_msg"
+  echo ""
+  echo "Expected format:"
+  echo "  type(scope)?: description"
+  echo ""
+  echo "Types: feat, fix, docs, style, refactor, perf, test, build, ci, chore, revert"
+  echo ""
+  echo "Examples:"
+  echo "  feat: add user authentication"
+  echo "  fix(api): handle null response"
+  echo "  docs: update README"
+  echo "  feat!: breaking change to API"
+  echo ""
+  exit 1
+fi
