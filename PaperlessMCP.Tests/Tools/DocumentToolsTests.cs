@@ -433,6 +433,47 @@ public class DocumentToolsTests : IDisposable
         json.RootElement.GetProperty("error").GetProperty("code").GetString().Should().Be("NOT_FOUND");
     }
 
+    [Fact]
+    public async Task Update_WhenBadRequest_ReturnsErrorWithDetails()
+    {
+        // Arrange
+        var errorBody = """{"title": ["This field may not be blank."]}""";
+        _factory.SetupPatchWithError("api/documents/1/", HttpStatusCode.BadRequest, errorBody);
+
+        // Act
+        var result = await DocumentTools.Update(_factory.Client, 1, title: "");
+
+        // Assert
+        var json = JsonDocument.Parse(result);
+        json.RootElement.GetProperty("ok").GetBoolean().Should().BeFalse();
+        json.RootElement.GetProperty("error").GetProperty("code").GetString().Should().Be("UPSTREAM_ERROR");
+
+        // Verify error details include status code and response body
+        var details = json.RootElement.GetProperty("error").GetProperty("details");
+        details.GetProperty("status_code").GetInt32().Should().Be(400);
+        details.GetProperty("response_body").GetString().Should().Contain("This field may not be blank");
+    }
+
+    [Fact]
+    public async Task Update_WhenForbidden_ReturnsErrorWithDetails()
+    {
+        // Arrange
+        var errorBody = """{"detail": "You do not have permission to perform this action."}""";
+        _factory.SetupPatchWithError("api/documents/1/", HttpStatusCode.Forbidden, errorBody);
+
+        // Act
+        var result = await DocumentTools.Update(_factory.Client, 1, title: "Updated");
+
+        // Assert
+        var json = JsonDocument.Parse(result);
+        json.RootElement.GetProperty("ok").GetBoolean().Should().BeFalse();
+        json.RootElement.GetProperty("error").GetProperty("code").GetString().Should().Be("UPSTREAM_ERROR");
+
+        var details = json.RootElement.GetProperty("error").GetProperty("details");
+        details.GetProperty("status_code").GetInt32().Should().Be(403);
+        details.GetProperty("response_body").GetString().Should().Contain("permission");
+    }
+
     #endregion
 
     #region Delete Tests

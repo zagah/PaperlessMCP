@@ -120,6 +120,47 @@ public class TagToolsTests : IDisposable
     }
 
     [Fact]
+    public async Task Create_WhenDuplicate_ReturnsErrorWithDetails()
+    {
+        // Arrange
+        var errorBody = """{"name": ["tag with this name already exists."]}""";
+        _factory.SetupPostWithError("api/tags/", HttpStatusCode.BadRequest, errorBody);
+
+        // Act
+        var result = await TagTools.Create(_factory.Client, "Existing Tag");
+
+        // Assert
+        var json = JsonDocument.Parse(result);
+        json.RootElement.GetProperty("ok").GetBoolean().Should().BeFalse();
+        json.RootElement.GetProperty("error").GetProperty("code").GetString().Should().Be("UPSTREAM_ERROR");
+
+        // Verify error details include status code and response body
+        var details = json.RootElement.GetProperty("error").GetProperty("details");
+        details.GetProperty("status_code").GetInt32().Should().Be(400);
+        details.GetProperty("response_body").GetString().Should().Contain("already exists");
+    }
+
+    [Fact]
+    public async Task Create_WhenUnauthorized_ReturnsErrorWithDetails()
+    {
+        // Arrange
+        var errorBody = """{"detail": "Authentication credentials were not provided."}""";
+        _factory.SetupPostWithError("api/tags/", HttpStatusCode.Unauthorized, errorBody);
+
+        // Act
+        var result = await TagTools.Create(_factory.Client, "New Tag");
+
+        // Assert
+        var json = JsonDocument.Parse(result);
+        json.RootElement.GetProperty("ok").GetBoolean().Should().BeFalse();
+        json.RootElement.GetProperty("error").GetProperty("code").GetString().Should().Be("UPSTREAM_ERROR");
+
+        var details = json.RootElement.GetProperty("error").GetProperty("details");
+        details.GetProperty("status_code").GetInt32().Should().Be(401);
+        details.GetProperty("response_body").GetString().Should().Contain("Authentication credentials");
+    }
+
+    [Fact]
     public async Task Update_WhenSuccessful_ReturnsUpdatedTag()
     {
         // Arrange

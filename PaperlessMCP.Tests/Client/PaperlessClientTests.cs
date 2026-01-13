@@ -6,6 +6,7 @@ using Xunit;
 using PaperlessMCP.Models.CustomFields;
 using PaperlessMCP.Models.DocumentTypes;
 using PaperlessMCP.Models.StoragePaths;
+using PaperlessMCP.Models.Documents;
 using PaperlessMCP.Models.Tags;
 using PaperlessMCP.Tests.Fixtures;
 
@@ -167,6 +168,57 @@ public class PaperlessClientTests : IDisposable
         result.ThumbnailUrl.Should().Be("https://paperless.example.com/api/documents/1/thumb/");
     }
 
+    [Fact]
+    public async Task UpdateDocumentWithResultAsync_WhenSuccessful_ReturnsSuccess()
+    {
+        // Arrange
+        _factory.SetupPatch("api/documents/1/", TestFixtures.Documents.CreateDocumentJson(1, "Updated Title"));
+
+        // Act
+        var result = await _factory.Client.UpdateDocumentWithResultAsync(1, new DocumentUpdateRequest { Title = "Updated Title" });
+
+        // Assert
+        result.IsSuccess.Should().BeTrue();
+        result.Value.Should().NotBeNull();
+        result.Value!.Title.Should().Be("Updated Title");
+        result.Error.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task UpdateDocumentWithResultAsync_WhenNotFound_ReturnsFailureWithDetails()
+    {
+        // Arrange
+        var errorBody = """{"detail": "Not found."}""";
+        _factory.SetupPatchWithError("api/documents/999/", HttpStatusCode.NotFound, errorBody);
+
+        // Act
+        var result = await _factory.Client.UpdateDocumentWithResultAsync(999, new DocumentUpdateRequest { Title = "New Title" });
+
+        // Assert
+        result.IsSuccess.Should().BeFalse();
+        result.Value.Should().BeNull();
+        result.Error.Should().NotBeNull();
+        result.Error!.StatusCode.Should().Be(HttpStatusCode.NotFound);
+        result.Error.ResponseBody.Should().Be(errorBody);
+    }
+
+    [Fact]
+    public async Task UpdateDocumentWithResultAsync_WhenBadRequest_ReturnsFailureWithDetails()
+    {
+        // Arrange
+        var errorBody = """{"title": ["This field may not be blank."]}""";
+        _factory.SetupPatchWithError("api/documents/1/", HttpStatusCode.BadRequest, errorBody);
+
+        // Act
+        var result = await _factory.Client.UpdateDocumentWithResultAsync(1, new DocumentUpdateRequest { Title = "" });
+
+        // Assert
+        result.IsSuccess.Should().BeFalse();
+        result.Error.Should().NotBeNull();
+        result.Error!.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        result.Error.ResponseBody.Should().Contain("This field may not be blank");
+    }
+
     #endregion
 
     #region Tag Tests
@@ -229,6 +281,56 @@ public class PaperlessClientTests : IDisposable
 
         // Assert
         result.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task CreateTagWithResultAsync_WhenSuccessful_ReturnsSuccess()
+    {
+        // Arrange
+        _factory.SetupPost("api/tags/", TestFixtures.Tags.CreateTagJson(5, "New Tag"));
+
+        // Act
+        var result = await _factory.Client.CreateTagWithResultAsync(new TagCreateRequest { Name = "New Tag" });
+
+        // Assert
+        result.IsSuccess.Should().BeTrue();
+        result.Value.Should().NotBeNull();
+        result.Value!.Name.Should().Be("New Tag");
+        result.Error.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task CreateTagWithResultAsync_WhenDuplicate_ReturnsFailureWithDetails()
+    {
+        // Arrange
+        var errorBody = """{"name": ["tag with this name already exists."]}""";
+        _factory.SetupPostWithError("api/tags/", HttpStatusCode.BadRequest, errorBody);
+
+        // Act
+        var result = await _factory.Client.CreateTagWithResultAsync(new TagCreateRequest { Name = "Existing Tag" });
+
+        // Assert
+        result.IsSuccess.Should().BeFalse();
+        result.Error.Should().NotBeNull();
+        result.Error!.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        result.Error.ResponseBody.Should().Contain("already exists");
+    }
+
+    [Fact]
+    public async Task CreateTagWithResultAsync_WhenUnauthorized_ReturnsFailureWithDetails()
+    {
+        // Arrange
+        var errorBody = """{"detail": "Authentication credentials were not provided."}""";
+        _factory.SetupPostWithError("api/tags/", HttpStatusCode.Unauthorized, errorBody);
+
+        // Act
+        var result = await _factory.Client.CreateTagWithResultAsync(new TagCreateRequest { Name = "Test" });
+
+        // Assert
+        result.IsSuccess.Should().BeFalse();
+        result.Error.Should().NotBeNull();
+        result.Error!.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
+        result.Error.ResponseBody.Should().Contain("Authentication credentials");
     }
 
     #endregion

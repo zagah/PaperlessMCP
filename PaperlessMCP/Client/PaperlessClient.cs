@@ -180,7 +180,16 @@ public class PaperlessClient
     /// </summary>
     public async Task<Document?> UpdateDocumentAsync(int id, DocumentUpdateRequest request, CancellationToken cancellationToken = default)
     {
-        return await PatchAsync<Document>($"api/documents/{id}/", request, cancellationToken).ConfigureAwait(false);
+        var result = await UpdateDocumentWithResultAsync(id, request, cancellationToken).ConfigureAwait(false);
+        return result.IsSuccess ? result.Value : null;
+    }
+
+    /// <summary>
+    /// Updates a document with full error details.
+    /// </summary>
+    public async Task<ApiResult<Document>> UpdateDocumentWithResultAsync(int id, DocumentUpdateRequest request, CancellationToken cancellationToken = default)
+    {
+        return await PatchWithResultAsync<Document>($"api/documents/{id}/", request, cancellationToken).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -188,7 +197,16 @@ public class PaperlessClient
     /// </summary>
     public async Task<bool> DeleteDocumentAsync(int id, CancellationToken cancellationToken = default)
     {
-        return await DeleteAsync($"api/documents/{id}/", cancellationToken).ConfigureAwait(false);
+        var result = await DeleteDocumentWithResultAsync(id, cancellationToken).ConfigureAwait(false);
+        return result.IsSuccess;
+    }
+
+    /// <summary>
+    /// Deletes a document with full error details.
+    /// </summary>
+    public async Task<ApiResult<bool>> DeleteDocumentWithResultAsync(int id, CancellationToken cancellationToken = default)
+    {
+        return await DeleteWithResultAsync($"api/documents/{id}/", cancellationToken).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -428,17 +446,35 @@ public class PaperlessClient
 
     public async Task<Tag?> CreateTagAsync(TagCreateRequest request, CancellationToken cancellationToken = default)
     {
-        return await PostAsync<Tag>("api/tags/", request, cancellationToken).ConfigureAwait(false);
+        var result = await CreateTagWithResultAsync(request, cancellationToken).ConfigureAwait(false);
+        return result.IsSuccess ? result.Value : null;
+    }
+
+    public async Task<ApiResult<Tag>> CreateTagWithResultAsync(TagCreateRequest request, CancellationToken cancellationToken = default)
+    {
+        return await PostWithResultAsync<Tag>("api/tags/", request, cancellationToken).ConfigureAwait(false);
     }
 
     public async Task<Tag?> UpdateTagAsync(int id, TagUpdateRequest request, CancellationToken cancellationToken = default)
     {
-        return await PatchAsync<Tag>($"api/tags/{id}/", request, cancellationToken).ConfigureAwait(false);
+        var result = await UpdateTagWithResultAsync(id, request, cancellationToken).ConfigureAwait(false);
+        return result.IsSuccess ? result.Value : null;
+    }
+
+    public async Task<ApiResult<Tag>> UpdateTagWithResultAsync(int id, TagUpdateRequest request, CancellationToken cancellationToken = default)
+    {
+        return await PatchWithResultAsync<Tag>($"api/tags/{id}/", request, cancellationToken).ConfigureAwait(false);
     }
 
     public async Task<bool> DeleteTagAsync(int id, CancellationToken cancellationToken = default)
     {
-        return await DeleteAsync($"api/tags/{id}/", cancellationToken).ConfigureAwait(false);
+        var result = await DeleteTagWithResultAsync(id, cancellationToken).ConfigureAwait(false);
+        return result.IsSuccess;
+    }
+
+    public async Task<ApiResult<bool>> DeleteTagWithResultAsync(int id, CancellationToken cancellationToken = default)
+    {
+        return await DeleteWithResultAsync($"api/tags/{id}/", cancellationToken).ConfigureAwait(false);
     }
 
     #endregion
@@ -632,7 +668,7 @@ public class PaperlessClient
                 return await response.Content.ReadFromJsonAsync<T>(JsonOptions, cancellationToken).ConfigureAwait(false);
             }
 
-            await LogErrorResponse(response, "GET", url).ConfigureAwait(false);
+            await CreateApiError(response, "GET", url).ConfigureAwait(false);
             return default;
         }
         catch (Exception ex)
@@ -642,7 +678,7 @@ public class PaperlessClient
         }
     }
 
-    private async Task<T?> PostAsync<T>(string url, object request, CancellationToken cancellationToken)
+    private async Task<ApiResult<T>> PostWithResultAsync<T>(string url, object request, CancellationToken cancellationToken)
     {
         try
         {
@@ -650,20 +686,23 @@ public class PaperlessClient
 
             if (response.IsSuccessStatusCode)
             {
-                return await response.Content.ReadFromJsonAsync<T>(JsonOptions, cancellationToken).ConfigureAwait(false);
+                var result = await response.Content.ReadFromJsonAsync<T>(JsonOptions, cancellationToken).ConfigureAwait(false);
+                return result != null
+                    ? ApiResult<T>.Success(result)
+                    : ApiResult<T>.Failure(response.StatusCode, "Empty response body");
             }
 
-            await LogErrorResponse(response, "POST", url).ConfigureAwait(false);
-            return default;
+            var error = await CreateApiError(response, "POST", url).ConfigureAwait(false);
+            return ApiResult<T>.Failure(error);
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "POST request failed: {Url}", url);
-            return default;
+            return ApiResult<T>.Failure(HttpStatusCode.InternalServerError, ex.Message);
         }
     }
 
-    private async Task<T?> PatchAsync<T>(string url, object request, CancellationToken cancellationToken)
+    private async Task<ApiResult<T>> PatchWithResultAsync<T>(string url, object request, CancellationToken cancellationToken)
     {
         try
         {
@@ -672,20 +711,23 @@ public class PaperlessClient
 
             if (response.IsSuccessStatusCode)
             {
-                return await response.Content.ReadFromJsonAsync<T>(JsonOptions, cancellationToken).ConfigureAwait(false);
+                var result = await response.Content.ReadFromJsonAsync<T>(JsonOptions, cancellationToken).ConfigureAwait(false);
+                return result != null
+                    ? ApiResult<T>.Success(result)
+                    : ApiResult<T>.Failure(response.StatusCode, "Empty response body");
             }
 
-            await LogErrorResponse(response, "PATCH", url).ConfigureAwait(false);
-            return default;
+            var error = await CreateApiError(response, "PATCH", url).ConfigureAwait(false);
+            return ApiResult<T>.Failure(error);
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "PATCH request failed: {Url}", url);
-            return default;
+            return ApiResult<T>.Failure(HttpStatusCode.InternalServerError, ex.Message);
         }
     }
 
-    private async Task<bool> DeleteAsync(string url, CancellationToken cancellationToken)
+    private async Task<ApiResult<bool>> DeleteWithResultAsync(string url, CancellationToken cancellationToken)
     {
         try
         {
@@ -693,24 +735,44 @@ public class PaperlessClient
 
             if (response.IsSuccessStatusCode || response.StatusCode == HttpStatusCode.NoContent)
             {
-                return true;
+                return ApiResult<bool>.Success(true);
             }
 
-            await LogErrorResponse(response, "DELETE", url).ConfigureAwait(false);
-            return false;
+            var error = await CreateApiError(response, "DELETE", url).ConfigureAwait(false);
+            return ApiResult<bool>.Failure(error);
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "DELETE request failed: {Url}", url);
-            return false;
+            return ApiResult<bool>.Failure(HttpStatusCode.InternalServerError, ex.Message);
         }
     }
 
-    private async Task LogErrorResponse(HttpResponseMessage response, string method, string url)
+    private async Task<ApiError> CreateApiError(HttpResponseMessage response, string method, string url)
     {
         var body = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
         _logger.LogError("{Method} {Url} failed with {StatusCode}: {Body}",
             method, url, (int)response.StatusCode, body);
+        return new ApiError(response.StatusCode, response.ReasonPhrase ?? "Unknown error", body);
+    }
+
+    // Legacy methods for backward compatibility - will be removed after migration
+    private async Task<T?> PostAsync<T>(string url, object request, CancellationToken cancellationToken)
+    {
+        var result = await PostWithResultAsync<T>(url, request, cancellationToken).ConfigureAwait(false);
+        return result.IsSuccess ? result.Value : default;
+    }
+
+    private async Task<T?> PatchAsync<T>(string url, object request, CancellationToken cancellationToken)
+    {
+        var result = await PatchWithResultAsync<T>(url, request, cancellationToken).ConfigureAwait(false);
+        return result.IsSuccess ? result.Value : default;
+    }
+
+    private async Task<bool> DeleteAsync(string url, CancellationToken cancellationToken)
+    {
+        var result = await DeleteWithResultAsync(url, cancellationToken).ConfigureAwait(false);
+        return result.IsSuccess;
     }
 
     #endregion

@@ -79,6 +79,20 @@ public class MockHttpClientFactory : IDisposable
             .Respond(statusCode);
     }
 
+    public MockedRequest SetupPatchWithError(string url, HttpStatusCode statusCode, string responseBody)
+    {
+        return MockHandler
+            .When(HttpMethod.Patch, $"{Options.BaseUrl.TrimEnd('/')}/{url.TrimStart('/')}")
+            .Respond(statusCode, "application/json", responseBody);
+    }
+
+    public MockedRequest SetupPostWithError(string url, HttpStatusCode statusCode, string responseBody)
+    {
+        return MockHandler
+            .When(HttpMethod.Post, $"{Options.BaseUrl.TrimEnd('/')}/{url.TrimStart('/')}")
+            .Respond(statusCode, "application/json", responseBody);
+    }
+
     public MockedRequest SetupDelete(string url, HttpStatusCode statusCode = HttpStatusCode.NoContent)
     {
         return MockHandler

@@ -82,20 +82,22 @@ public static class TagTools
             IsInboxTag = isInboxTag
         };
 
-        var tag = await client.CreateTagAsync(request).ConfigureAwait(false);
+        var result = await client.CreateTagWithResultAsync(request).ConfigureAwait(false);
 
-        if (tag == null)
+        if (!result.IsSuccess)
         {
+            var error = result.Error!;
             var errorResponse = McpErrorResponse.Create(
                 ErrorCodes.UpstreamError,
-                "Failed to create tag",
-                meta: new McpMeta { PaperlessBaseUrl = client.BaseUrl }
+                $"Failed to create tag: {error.Message}",
+                new { status_code = (int)error.StatusCode, response_body = error.ResponseBody },
+                new McpMeta { PaperlessBaseUrl = client.BaseUrl }
             );
             return JsonSerializer.Serialize(errorResponse);
         }
 
         var response = McpResponse<Tag>.Success(
-            tag,
+            result.Value!,
             new McpMeta { PaperlessBaseUrl = client.BaseUrl }
         );
         return JsonSerializer.Serialize(response);

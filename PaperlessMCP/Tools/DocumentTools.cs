@@ -350,20 +350,22 @@ public static class DocumentTools
             Created = ParseDate(created)
         };
 
-        var document = await client.UpdateDocumentAsync(id, request).ConfigureAwait(false);
+        var result = await client.UpdateDocumentWithResultAsync(id, request).ConfigureAwait(false);
 
-        if (document == null)
+        if (!result.IsSuccess)
         {
+            var error = result.Error!;
             var errorResponse = McpErrorResponse.Create(
-                ErrorCodes.NotFound,
-                $"Document with ID {id} not found or update failed",
-                meta: new McpMeta { PaperlessBaseUrl = client.BaseUrl }
+                error.StatusCode == System.Net.HttpStatusCode.NotFound ? ErrorCodes.NotFound : ErrorCodes.UpstreamError,
+                $"Failed to update document {id}: {error.Message}",
+                new { status_code = (int)error.StatusCode, response_body = error.ResponseBody },
+                new McpMeta { PaperlessBaseUrl = client.BaseUrl }
             );
             return JsonSerializer.Serialize(errorResponse);
         }
 
         var response = McpResponse<Document>.Success(
-            document,
+            result.Value!,
             new McpMeta { PaperlessBaseUrl = client.BaseUrl }
         );
         return JsonSerializer.Serialize(response);
