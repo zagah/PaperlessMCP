@@ -26,23 +26,24 @@ steps:
   - name: version
     image: alpine/git
     commands:
-      - apk add --no-cache bash
       - |
         # Get the latest tag or default to v0.0.0
         LATEST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "v0.0.0")
         echo "Latest tag: $LATEST_TAG"
 
-        # Parse current version
-        VERSION=${LATEST_TAG#v}
-        MAJOR=$(echo $VERSION | cut -d. -f1)
-        MINOR=$(echo $VERSION | cut -d. -f2)
-        PATCH=$(echo $VERSION | cut -d. -f3)
+        # Parse current version (strip 'v' prefix using sed)
+        VERSION=$(echo "$LATEST_TAG" | sed 's/^v//')
+        MAJOR=$(echo "$VERSION" | cut -d. -f1)
+        MINOR=$(echo "$VERSION" | cut -d. -f2)
+        PATCH=$(echo "$VERSION" | cut -d. -f3)
+
+        echo "Current: $MAJOR.$MINOR.$PATCH"
 
         # Get commits since last tag
         if [ "$LATEST_TAG" = "v0.0.0" ]; then
           COMMITS=$(git log --pretty=format:"%s" HEAD)
         else
-          COMMITS=$(git log --pretty=format:"%s" ${LATEST_TAG}..HEAD)
+          COMMITS=$(git log --pretty=format:"%s" "${LATEST_TAG}..HEAD")
         fi
 
         # Determine bump type from conventional commits
