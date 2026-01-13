@@ -102,11 +102,19 @@ steps:
 
   # Create GitHub release
   - name: release
-    image: woodpeckerci/plugin-github-release
-    settings:
-      api_key:
+    image: alpine
+    environment:
+      GITHUB_TOKEN:
         from_secret: github_token
-      files:
-        - artifacts/*.nupkg
-      prerelease: false
+    commands:
+      - apk add --no-cache curl
+      - |
+        TAG=$$(cat .tag)
+        VERSION=$$(cat .version)
+        echo "Creating GitHub release for $$TAG"
+        curl -X POST \
+          -H "Authorization: token $$GITHUB_TOKEN" \
+          -H "Accept: application/vnd.github.v3+json" \
+          https://api.github.com/repos/barryw/PaperlessMCP/releases \
+          -d "{\"tag_name\":\"$$TAG\",\"name\":\"Release $$VERSION\",\"body\":\"Release $$VERSION\",\"draft\":false,\"prerelease\":false}"
     depends_on: [git-tag]
