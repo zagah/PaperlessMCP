@@ -4,6 +4,7 @@
 
 **Model Context Protocol Server for Paperless-ngx**
 
+[![Build Status](https://ci.barrywalker.io/api/badges/3/status.svg)](https://ci.barrywalker.io/repos/3)
 [![.NET 10](https://img.shields.io/badge/.NET-10.0-512BD4?logo=dotnet)](https://dotnet.microsoft.com/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![MCP](https://img.shields.io/badge/MCP-0.2.0--preview.1-blue)](https://modelcontextprotocol.io/)
