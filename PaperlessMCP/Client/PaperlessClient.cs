@@ -42,19 +42,21 @@ public class PaperlessClient
     #region Health & Status
 
     /// <summary>
-    /// Checks connectivity and returns API root information.
+    /// Checks connectivity and returns API status information.
     /// </summary>
     public async Task<(bool Success, string? Version, string? Error)> PingAsync(CancellationToken cancellationToken = default)
     {
         try
         {
-            var response = await _httpClient.GetAsync("api/", cancellationToken);
+            var response = await _httpClient.GetAsync("api/status/", cancellationToken);
 
             if (response.IsSuccessStatusCode)
             {
-                // Try to extract version from response headers or body
-                var version = response.Headers.TryGetValues("X-Version", out var versions)
-                    ? versions.FirstOrDefault()
+                // Extract version from the status response
+                var content = await response.Content.ReadAsStringAsync(cancellationToken);
+                var json = JsonSerializer.Deserialize<JsonElement>(content);
+                var version = json.TryGetProperty("pngx_version", out var versionProp)
+                    ? versionProp.GetString()
                     : null;
 
                 return (true, version, null);

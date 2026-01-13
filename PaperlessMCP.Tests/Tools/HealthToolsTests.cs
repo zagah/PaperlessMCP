@@ -26,14 +26,7 @@ public class HealthToolsTests : IDisposable
     public async Task Ping_WhenConnected_ReturnsSuccess()
     {
         // Arrange
-        _factory.MockHandler
-            .When(HttpMethod.Get, "https://paperless.example.com/api/")
-            .Respond(req =>
-            {
-                var response = new HttpResponseMessage(HttpStatusCode.OK);
-                response.Headers.Add("X-Version", "2.5.0");
-                return response;
-            });
+        _factory.SetupGet("api/status/", """{"pngx_version": "2.5.0", "server_os": "Linux"}""");
 
         // Act
         var result = await HealthTools.Ping(_factory.Client);
@@ -48,7 +41,7 @@ public class HealthToolsTests : IDisposable
     public async Task Ping_WhenConnectionFails_ReturnsError()
     {
         // Arrange
-        _factory.SetupGetWithStatus("api/", HttpStatusCode.Unauthorized);
+        _factory.SetupGetWithStatus("api/status/", HttpStatusCode.Unauthorized);
 
         // Act
         var result = await HealthTools.Ping(_factory.Client);
@@ -63,16 +56,7 @@ public class HealthToolsTests : IDisposable
     public async Task GetCapabilities_ReturnsCapabilitiesInfo()
     {
         // Arrange
-        _factory.MockHandler
-            .When(HttpMethod.Get, "https://paperless.example.com/api/")
-            .Respond(req =>
-            {
-                var response = new HttpResponseMessage(HttpStatusCode.OK);
-                response.Headers.Add("X-Version", "2.5.0");
-                return response;
-            });
-
-        _factory.SetupGet("api/status/", "{}");
+        _factory.SetupGet("api/status/", """{"pngx_version": "2.5.0", "server_os": "Linux"}""");
 
         // Act
         var result = await HealthTools.GetCapabilities(_factory.Client);
@@ -91,11 +75,7 @@ public class HealthToolsTests : IDisposable
     public async Task GetCapabilities_IncludesAllEndpointCategories()
     {
         // Arrange
-        _factory.MockHandler
-            .When(HttpMethod.Get, "https://paperless.example.com/api/")
-            .Respond(HttpStatusCode.OK);
-
-        _factory.SetupGet("api/status/", "{}");
+        _factory.SetupGet("api/status/", """{"pngx_version": "2.5.0"}""");
 
         // Act
         var result = await HealthTools.GetCapabilities(_factory.Client);

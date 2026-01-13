@@ -31,14 +31,7 @@ public class PaperlessClientTests : IDisposable
     public async Task PingAsync_WhenSuccessful_ReturnsSuccess()
     {
         // Arrange
-        _factory.MockHandler
-            .When(HttpMethod.Get, "https://paperless.example.com/api/")
-            .Respond(req =>
-            {
-                var response = new HttpResponseMessage(HttpStatusCode.OK);
-                response.Headers.Add("X-Version", "2.0.0");
-                return response;
-            });
+        _factory.SetupGet("api/status/", """{"pngx_version": "2.0.0", "server_os": "Linux"}""");
 
         // Act
         var (success, version, error) = await _factory.Client.PingAsync();
@@ -53,7 +46,7 @@ public class PaperlessClientTests : IDisposable
     public async Task PingAsync_WhenUnauthorized_ReturnsFailure()
     {
         // Arrange
-        _factory.SetupGetWithStatus("api/", HttpStatusCode.Unauthorized);
+        _factory.SetupGetWithStatus("api/status/", HttpStatusCode.Unauthorized);
 
         // Act
         var (success, version, error) = await _factory.Client.PingAsync();
