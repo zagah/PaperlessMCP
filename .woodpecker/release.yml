@@ -100,9 +100,10 @@ steps:
         TAG=$(cat .tag)
         VERSION=$(cat .version)
         echo "Creating tag $TAG for version $VERSION"
+        echo "Token length: ${#GITHUB_TOKEN}"
         git config user.email "ci@woodpecker.local"
         git config user.name "Woodpecker CI"
-        git remote set-url origin https://x-access-token:${GITHUB_TOKEN}@github.com/barryw/PaperlessMCP.git
+        git remote set-url origin "https://x-access-token:${GITHUB_TOKEN}@github.com/barryw/PaperlessMCP.git"
         git tag -a "$TAG" -m "Release $VERSION"
         git push origin "$TAG"
     depends_on: [package, docker]
