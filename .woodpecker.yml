@@ -1,0 +1,110 @@
+variables:
+  - &dotnet_image "mcr.microsoft.com/dotnet/sdk:10.0-preview"
+  - &docker_image "woodpeckerci/plugin-docker-buildx"
+
+when:
+  - event: [push, pull_request, tag]
+
+steps:
+  # Restore dependencies
+  restore:
+    image: *dotnet_image
+    commands:
+      - dotnet restore
+
+  # Build the project
+  build:
+    image: *dotnet_image
+    commands:
+      - dotnet build --no-restore -c Release
+    depends_on: [restore]
+
+  # Run tests
+  test:
+    image: *dotnet_image
+    commands:
+      - dotnet test --no-build -c Release --logger "console;verbosity=detailed"
+    depends_on: [build]
+
+  # Determine version from git tags
+  version:
+    image: alpine/git
+    commands:
+      - |
+        if [ -n "$CI_COMMIT_TAG" ]; then
+          # Use tag as version (strip 'v' prefix if present)
+          VERSION=$(echo "$CI_COMMIT_TAG" | sed 's/^v//')
+        else
+          # Generate dev version from branch and short SHA
+          BRANCH=$(echo "$CI_COMMIT_BRANCH" | sed 's/[^a-zA-Z0-9]/-/g')
+          SHORT_SHA=$(echo "$CI_COMMIT_SHA" | cut -c1-7)
+          # Get latest tag or default to 0.0.0
+          LATEST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "v0.0.0")
+          BASE_VERSION=$(echo "$LATEST_TAG" | sed 's/^v//')
+          VERSION="${BASE_VERSION}-dev.${BRANCH}.${SHORT_SHA}"
+        fi
+        echo "$VERSION" > .version
+        echo "Building version: $VERSION"
+    depends_on: [test]
+
+  # Package as NuGet (for library distribution)
+  package-nuget:
+    image: *dotnet_image
+    commands:
+      - VERSION=$(cat .version)
+      - echo "Packaging version $VERSION"
+      - dotnet pack PaperlessMCP/PaperlessMCP.csproj --no-build -c Release -o ./artifacts /p:Version=$VERSION /p:PackageVersion=$VERSION
+      - ls -la ./artifacts/
+    depends_on: [version]
+    when:
+      - event: [push, tag]
+        branch: main
+
+  # Build and push Docker image (tags only)
+  package-docker:
+    image: *docker_image
+    settings:
+      repo: ghcr.io/barryw/paperlessmcp
+      dockerfile: PaperlessMCP/Dockerfile
+      context: PaperlessMCP
+      platforms:
+        - linux/amd64
+        - linux/arm64
+      tag: [latest, "${CI_COMMIT_TAG}"]
+      build_args:
+        - VERSION=${CI_COMMIT_TAG}
+      registry: ghcr.io
+      username:
+        from_secret: github_username
+      password:
+        from_secret: github_token
+    depends_on: [version]
+    when:
+      - event: tag
+
+  # Build Docker for PRs (no push, just verify it builds)
+  docker-verify:
+    image: *docker_image
+    settings:
+      repo: ghcr.io/barryw/paperlessmcp
+      dockerfile: PaperlessMCP/Dockerfile
+      context: PaperlessMCP
+      platforms:
+        - linux/amd64
+      dry_run: true
+    depends_on: [version]
+    when:
+      - event: pull_request
+
+  # Create GitHub release (tags only)
+  release:
+    image: woodpeckerci/plugin-github-release
+    settings:
+      api_key:
+        from_secret: github_token
+      files:
+        - artifacts/*.nupkg
+      title: ${CI_COMMIT_TAG}
+    depends_on: [package-nuget, package-docker]
+    when:
+      - event: tag

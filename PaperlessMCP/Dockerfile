@@ -1,5 +1,6 @@
 # Build stage
 FROM mcr.microsoft.com/dotnet/sdk:10.0-preview AS build
+ARG VERSION=0.0.0-dev
 WORKDIR /src
 
 # Copy project file and restore dependencies
@@ -8,11 +9,19 @@ RUN dotnet restore
 
 # Copy source code and build
 COPY . .
-RUN dotnet publish -c Release -o /app/publish
+RUN dotnet publish -c Release -o /app/publish /p:Version=${VERSION}
 
 # Runtime stage
 FROM mcr.microsoft.com/dotnet/aspnet:10.0-preview AS runtime
+ARG VERSION=0.0.0-dev
 WORKDIR /app
+
+# OCI Labels
+LABEL org.opencontainers.image.title="PaperlessMCP"
+LABEL org.opencontainers.image.description="Model Context Protocol server for Paperless-ngx"
+LABEL org.opencontainers.image.version="${VERSION}"
+LABEL org.opencontainers.image.source="https://github.com/barryw/PaperlessMCP"
+LABEL org.opencontainers.image.licenses="MIT"
 
 # Copy published application
 COPY --from=build /app/publish .
@@ -23,10 +32,6 @@ ENV MCP_PORT=5000
 
 # Expose port for HTTP transport
 EXPOSE 5000
-
-# Health check
-HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-    CMD curl -f http://localhost:5000/mcp || exit 1
 
 # Run the application (HTTP mode by default)
 ENTRYPOINT ["dotnet", "PaperlessMCP.dll"]

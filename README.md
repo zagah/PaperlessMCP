@@ -139,6 +139,25 @@ dotnet build        # Build
 dotnet test         # Run tests
 ```
 
+### CI/CD
+
+This project uses [Woodpecker CI](https://woodpecker-ci.org/) for continuous integration:
+
+| Event | Actions |
+|-------|---------|
+| **Push/PR** | Build → Test |
+| **Push to main** | Build → Test → Package NuGet |
+| **Tag (vX.Y.Z)** | Build → Test → Package → Docker → GitHub Release |
+
+**Versioning:** Semantic versioning via git tags. Create a release with:
+
+```bash
+git tag v1.0.0
+git push origin v1.0.0
+```
+
+**Docker Images:** `ghcr.io/barryw/paperlessmcp:latest`
+
 ### Project Structure
 
 ```
