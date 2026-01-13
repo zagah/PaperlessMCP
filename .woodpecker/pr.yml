@@ -2,6 +2,9 @@
 when:
   - event: pull_request
 
+labels:
+  platform: linux/amd64
+
 clone:
   - name: clone
     image: woodpeckerci/plugin-git
