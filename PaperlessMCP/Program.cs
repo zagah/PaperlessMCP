@@ -1,0 +1,94 @@
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
+using ModelContextProtocol.Server;
+using PaperlessMCP.Client;
+using PaperlessMCP.Configuration;
+using Polly;
+using Polly.Extensions.Http;
+
+var useStdio = args.Contains("--stdio");
+
+if (useStdio)
+{
+    // stdio transport for local usage (Claude Desktop)
+    var builder = Host.CreateApplicationBuilder(args);
+
+    ConfigureServices(builder.Services, builder.Configuration);
+
+    builder.Logging.AddConsole(options =>
+    {
+        options.LogToStandardErrorThreshold = LogLevel.Trace;
+    });
+
+    builder.Services
+        .AddMcpServer()
+        .WithStdioServerTransport()
+        .WithToolsFromAssembly();
+
+    await builder.Build().RunAsync();
+}
+else
+{
+    // HTTP transport for remote usage
+    var builder = WebApplication.CreateBuilder(args);
+
+    ConfigureServices(builder.Services, builder.Configuration);
+
+    builder.Services
+        .AddMcpServer()
+        .WithToolsFromAssembly();
+
+    var app = builder.Build();
+
+    var port = app.Configuration.GetValue<int?>("Mcp:Port")
+               ?? (Environment.GetEnvironmentVariable("MCP_PORT") is string portStr && int.TryParse(portStr, out var p) ? p : 5000);
+
+    app.MapMcp("/mcp");
+
+    app.Logger.LogInformation("PaperlessMCP server starting on port {Port}", port);
+    app.Logger.LogInformation("MCP endpoint available at: http://localhost:{Port}/mcp", port);
+
+    await app.RunAsync($"http://0.0.0.0:{port}");
+}
+
+void ConfigureServices(IServiceCollection services, IConfiguration configuration)
+{
+    // Configuration
+    services.Configure<PaperlessOptions>(options =>
+    {
+        // Environment variables take precedence (support both naming conventions)
+        options.BaseUrl = Environment.GetEnvironmentVariable("PAPERLESS_BASE_URL")
+                          ?? Environment.GetEnvironmentVariable("PAPERLESS_URL")
+                          ?? configuration.GetValue<string>("Paperless:BaseUrl")
+                          ?? throw new InvalidOperationException("PAPERLESS_BASE_URL or PAPERLESS_URL is required");
+
+        options.ApiToken = Environment.GetEnvironmentVariable("PAPERLESS_API_TOKEN")
+                           ?? Environment.GetEnvironmentVariable("PAPERLESS_TOKEN")
+                           ?? configuration.GetValue<string>("Paperless:ApiToken")
+                           ?? throw new InvalidOperationException("PAPERLESS_API_TOKEN or PAPERLESS_TOKEN is required");
+
+        options.MaxPageSize = Environment.GetEnvironmentVariable("MAX_PAGE_SIZE") is string maxPageStr && int.TryParse(maxPageStr, out var maxPage)
+            ? maxPage
+            : configuration.GetValue<int?>("Paperless:MaxPageSize") ?? 100;
+    });
+
+    // Configure retry policy for transient errors
+    var retryPolicy = HttpPolicyExtensions
+        .HandleTransientHttpError()
+        .OrResult(msg => msg.StatusCode == System.Net.HttpStatusCode.TooManyRequests)
+        .WaitAndRetryAsync(3, retryAttempt => TimeSpan.FromSeconds(Math.Pow(2, retryAttempt)));
+
+    // HttpClient for Paperless API
+    services.AddHttpClient<PaperlessClient>((sp, client) =>
+    {
+        var options = sp.GetRequiredService<IOptions<PaperlessOptions>>().Value;
+        client.BaseAddress = new Uri(options.BaseUrl.TrimEnd('/') + "/");
+        client.DefaultRequestHeaders.Add("Accept", "application/json; version=9");
+    })
+    .AddHttpMessageHandler<PaperlessAuthHandler>()
+    .AddPolicyHandler(retryPolicy);
+
+    services.AddTransient<PaperlessAuthHandler>();
+}

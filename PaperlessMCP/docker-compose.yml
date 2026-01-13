@@ -1,0 +1,40 @@
+version: '3.8'
+
+services:
+  paperless-mcp:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: paperless-mcp
+    ports:
+      - "5000:5000"
+    environment:
+      # Required: Your Paperless-ngx instance URL
+      - PAPERLESS_BASE_URL=${PAPERLESS_BASE_URL:?PAPERLESS_BASE_URL is required}
+      # Required: API token from Paperless-ngx
+      - PAPERLESS_API_TOKEN=${PAPERLESS_API_TOKEN:?PAPERLESS_API_TOKEN is required}
+      # Optional: Logging level (default: Information)
+      - MCP_LOG_LEVEL=${MCP_LOG_LEVEL:-Information}
+      # Optional: Maximum page size for paginated requests (default: 100)
+      - MAX_PAGE_SIZE=${MAX_PAGE_SIZE:-100}
+      # Optional: MCP server port (default: 5000)
+      - MCP_PORT=${MCP_PORT:-5000}
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5000/mcp"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+# Example usage:
+#
+# 1. Create a .env file with your configuration:
+#    PAPERLESS_BASE_URL=https://your-paperless-instance.com
+#    PAPERLESS_API_TOKEN=your-api-token-here
+#
+# 2. Start the service:
+#    docker-compose up -d
+#
+# 3. Connect your MCP client to:
+#    http://localhost:5000/mcp
