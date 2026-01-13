@@ -63,12 +63,13 @@ steps:
   - name: package
     image: mcr.microsoft.com/dotnet/sdk:10.0
     commands:
-      - VERSION=$(cat .version)
-      - echo "Packaging version $VERSION"
-      - dotnet restore
-      - dotnet build -c Release
-      - dotnet pack PaperlessMCP/PaperlessMCP.csproj -c Release -o ./artifacts /p:Version=$VERSION /p:PackageVersion=$VERSION
-      - ls -la ./artifacts/
+      - |
+        VERSION=$(cat .version)
+        echo "Packaging version $VERSION"
+        dotnet restore
+        dotnet build -c Release
+        dotnet pack PaperlessMCP/PaperlessMCP.csproj -c Release -o ./artifacts /p:Version=$VERSION /p:PackageVersion=$VERSION
+        ls -la ./artifacts/
     depends_on: [version]
 
   # Build and push Docker with Kaniko
@@ -80,15 +81,17 @@ steps:
       GHCR_TOKEN:
         from_secret: github_token
     commands:
-      - VERSION=$(cat .version)
-      - mkdir -p /kaniko/.docker
-      - echo "{\"auths\":{\"ghcr.io\":{\"username\":\"$GHCR_USERNAME\",\"password\":\"$GHCR_TOKEN\"}}}" > /kaniko/.docker/config.json
-      - /kaniko/executor
-        --context=$CI_WORKSPACE/PaperlessMCP
-        --dockerfile=$CI_WORKSPACE/PaperlessMCP/Dockerfile
-        --destination=ghcr.io/barryw/paperlessmcp:v${VERSION}
-        --destination=ghcr.io/barryw/paperlessmcp:latest
-        --build-arg=VERSION=${VERSION}
+      - |
+        VERSION=$(cat .version)
+        echo "Building Docker image version: $VERSION"
+        mkdir -p /kaniko/.docker
+        echo "{\"auths\":{\"ghcr.io\":{\"username\":\"$GHCR_USERNAME\",\"password\":\"$GHCR_TOKEN\"}}}" > /kaniko/.docker/config.json
+        /kaniko/executor \
+          --context=$CI_WORKSPACE/PaperlessMCP \
+          --dockerfile=$CI_WORKSPACE/PaperlessMCP/Dockerfile \
+          --destination=ghcr.io/barryw/paperlessmcp:v${VERSION} \
+          --destination=ghcr.io/barryw/paperlessmcp:latest \
+          --build-arg=VERSION=${VERSION}
     depends_on: [version]
 
   # Create git tag and push
@@ -98,10 +101,10 @@ steps:
       GITHUB_TOKEN:
         from_secret: github_token
     commands:
-      - TAG=$(cat .tag)
-      - VERSION=$(cat .version)
-      - echo "Creating tag $TAG"
       - |
+        TAG=$(cat .tag)
+        VERSION=$(cat .version)
+        echo "Creating tag $TAG for version $VERSION"
         git config user.email "ci@woodpecker.local"
         git config user.name "Woodpecker CI"
         git remote set-url origin https://x-access-token:${GITHUB_TOKEN}@github.com/barryw/PaperlessMCP.git
