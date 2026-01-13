@@ -118,3 +118,22 @@ steps:
           https://api.github.com/repos/barryw/PaperlessMCP/releases \
           -d "{\"tag_name\":\"$$TAG\",\"name\":\"Release $$VERSION\",\"body\":\"Release $$VERSION\",\"draft\":false,\"prerelease\":false}"
     depends_on: [git-tag]
+
+  # Deploy to Kubernetes (uses in-cluster service account)
+  - name: deploy
+    image: bitnami/kubectl:latest
+    commands:
+      - |
+        VERSION=$$(cat .version)
+        echo "Deploying version $$VERSION to Kubernetes"
+
+        # Update deployment image to specific version tag
+        kubectl set image deployment/paperless-mcp \
+          paperless-mcp=ghcr.io/barryw/paperlessmcp:v$$VERSION \
+          -n default
+
+        # Wait for rollout to complete
+        kubectl rollout status deployment/paperless-mcp -n default --timeout=120s
+
+        echo "Deployment complete!"
+    depends_on: [docker, release]

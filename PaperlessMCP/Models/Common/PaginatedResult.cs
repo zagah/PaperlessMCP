@@ -19,33 +19,6 @@ public record PaginatedResult<T>
 
     [JsonPropertyName("results")]
     public List<T> Results { get; init; } = [];
-
-    /// <summary>
-    /// Gets all items from all pages using the provided fetch function.
-    /// </summary>
-    public static async Task<List<T>> GetAllPagesAsync(
-        Func<int, Task<PaginatedResult<T>>> fetchPage,
-        int maxPages = 100,
-        CancellationToken cancellationToken = default)
-    {
-        var allResults = new List<T>();
-        var page = 1;
-
-        while (page <= maxPages)
-        {
-            cancellationToken.ThrowIfCancellationRequested();
-
-            var result = await fetchPage(page);
-            allResults.AddRange(result.Results);
-
-            if (string.IsNullOrEmpty(result.Next))
-                break;
-
-            page++;
-        }
-
-        return allResults;
-    }
 }
 
 /// <summary>

@@ -87,6 +87,7 @@ void ConfigureServices(IServiceCollection services, IConfiguration configuration
         var options = sp.GetRequiredService<IOptions<PaperlessOptions>>().Value;
         client.BaseAddress = new Uri(options.BaseUrl.TrimEnd('/') + "/");
         client.DefaultRequestHeaders.Add("Accept", "application/json; version=9");
+        client.Timeout = TimeSpan.FromSeconds(30);
     })
     .AddHttpMessageHandler<PaperlessAuthHandler>()
     .AddPolicyHandler(retryPolicy);

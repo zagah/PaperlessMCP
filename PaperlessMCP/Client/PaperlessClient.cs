@@ -48,12 +48,12 @@ public class PaperlessClient
     {
         try
         {
-            var response = await _httpClient.GetAsync("api/status/", cancellationToken);
+            var response = await _httpClient.GetAsync("api/status/", cancellationToken).ConfigureAwait(false);
 
             if (response.IsSuccessStatusCode)
             {
                 // Extract version from the status response
-                var content = await response.Content.ReadAsStringAsync(cancellationToken);
+                var content = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
                 var json = JsonSerializer.Deserialize<JsonElement>(content);
                 var version = json.TryGetProperty("pngx_version", out var versionProp)
                     ? versionProp.GetString()
@@ -78,11 +78,11 @@ public class PaperlessClient
     {
         try
         {
-            var response = await _httpClient.GetAsync("api/status/", cancellationToken);
+            var response = await _httpClient.GetAsync("api/status/", cancellationToken).ConfigureAwait(false);
 
             if (response.IsSuccessStatusCode)
             {
-                var json = await response.Content.ReadFromJsonAsync<JsonDocument>(cancellationToken);
+                var json = await response.Content.ReadFromJsonAsync<JsonDocument>(cancellationToken).ConfigureAwait(false);
                 return (true, json, null);
             }
 
@@ -163,7 +163,7 @@ public class PaperlessClient
             queryParams["ordering"] = ordering;
 
         var url = $"api/documents/?{queryParams}";
-        return await GetAsync<PaginatedResult<DocumentSearchResult>>(url, cancellationToken)
+        return await GetAsync<PaginatedResult<DocumentSearchResult>>(url, cancellationToken).ConfigureAwait(false)
                ?? new PaginatedResult<DocumentSearchResult>();
     }
 
@@ -172,7 +172,7 @@ public class PaperlessClient
     /// </summary>
     public async Task<Document?> GetDocumentAsync(int id, CancellationToken cancellationToken = default)
     {
-        return await GetAsync<Document>($"api/documents/{id}/", cancellationToken);
+        return await GetAsync<Document>($"api/documents/{id}/", cancellationToken).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -180,7 +180,7 @@ public class PaperlessClient
     /// </summary>
     public async Task<Document?> UpdateDocumentAsync(int id, DocumentUpdateRequest request, CancellationToken cancellationToken = default)
     {
-        return await PatchAsync<Document>($"api/documents/{id}/", request, cancellationToken);
+        return await PatchAsync<Document>($"api/documents/{id}/", request, cancellationToken).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -188,7 +188,7 @@ public class PaperlessClient
     /// </summary>
     public async Task<bool> DeleteDocumentAsync(int id, CancellationToken cancellationToken = default)
     {
-        return await DeleteAsync($"api/documents/{id}/", cancellationToken);
+        return await DeleteAsync($"api/documents/{id}/", cancellationToken).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -204,7 +204,7 @@ public class PaperlessClient
             () => new ByteArrayContent(fileContent),
             fileName,
             metadata,
-            cancellationToken);
+            cancellationToken).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -247,7 +247,7 @@ public class PaperlessClient
                     fileName,
                     metadata,
                     cancellationToken,
-                    disposeContent: false); // StreamContent owns the stream
+                    disposeContent: false).ConfigureAwait(false); // StreamContent owns the stream
 
                 if (taskId != null)
                 {
@@ -262,18 +262,18 @@ public class PaperlessClient
                 {
                     var delay = TimeSpan.FromSeconds(Math.Pow(2, attempt)); // Exponential backoff
                     _logger.LogInformation("Retrying in {Delay}...", delay);
-                    await Task.Delay(delay, cancellationToken);
+                    await Task.Delay(delay, cancellationToken).ConfigureAwait(false);
                 }
             }
             catch (IOException ex) when (attempt < maxRetries)
             {
                 _logger.LogWarning(ex, "IO error on attempt {Attempt}/{MaxRetries}, retrying...", attempt, maxRetries);
-                await Task.Delay(TimeSpan.FromSeconds(Math.Pow(2, attempt)), cancellationToken);
+                await Task.Delay(TimeSpan.FromSeconds(Math.Pow(2, attempt)), cancellationToken).ConfigureAwait(false);
             }
             catch (HttpRequestException ex) when (attempt < maxRetries)
             {
                 _logger.LogWarning(ex, "HTTP error on attempt {Attempt}/{MaxRetries}, retrying...", attempt, maxRetries);
-                await Task.Delay(TimeSpan.FromSeconds(Math.Pow(2, attempt)), cancellationToken);
+                await Task.Delay(TimeSpan.FromSeconds(Math.Pow(2, attempt)), cancellationToken).ConfigureAwait(false);
             }
             catch (Exception ex)
             {
@@ -294,10 +294,12 @@ public class PaperlessClient
     {
         using var formContent = new MultipartFormDataContent();
         var fileContent = contentFactory();
+        var addedToForm = false;
 
         try
         {
             formContent.Add(fileContent, "document", fileName);
+            addedToForm = true;
 
             if (metadata != null)
             {
@@ -327,21 +329,23 @@ public class PaperlessClient
             using var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
             cts.CancelAfter(TimeSpan.FromMinutes(5)); // 5 minute timeout for uploads
 
-            var response = await _httpClient.PostAsync("api/documents/post_document/", formContent, cts.Token);
+            var response = await _httpClient.PostAsync("api/documents/post_document/", formContent, cts.Token).ConfigureAwait(false);
 
             if (response.IsSuccessStatusCode)
             {
-                var result = await response.Content.ReadAsStringAsync(cts.Token);
+                var result = await response.Content.ReadAsStringAsync(cts.Token).ConfigureAwait(false);
                 return result.Trim('"'); // Returns task UUID
             }
 
-            var error = await response.Content.ReadAsStringAsync(cts.Token);
+            var error = await response.Content.ReadAsStringAsync(cts.Token).ConfigureAwait(false);
             _logger.LogError("Failed to upload document: {StatusCode} - {Error}", response.StatusCode, error);
             return null;
         }
         finally
         {
-            if (disposeContent && fileContent is IDisposable disposable)
+            // Only dispose manually if we didn't add it to formContent
+            // (formContent owns and will dispose content added to it)
+            if (!addedToForm && disposeContent && fileContent is IDisposable disposable)
             {
                 disposable.Dispose();
             }
@@ -383,7 +387,7 @@ public class PaperlessClient
 
         try
         {
-            var response = await _httpClient.PostAsJsonAsync("api/documents/bulk_edit/", request, JsonOptions, cancellationToken);
+            var response = await _httpClient.PostAsJsonAsync("api/documents/bulk_edit/", request, JsonOptions, cancellationToken).ConfigureAwait(false);
             return response.IsSuccessStatusCode;
         }
         catch (Exception ex)
@@ -398,7 +402,7 @@ public class PaperlessClient
     /// </summary>
     public async Task<int?> GetNextAsnAsync(CancellationToken cancellationToken = default)
     {
-        return await GetAsync<int?>("api/documents/next_asn/", cancellationToken);
+        return await GetAsync<int?>("api/documents/next_asn/", cancellationToken).ConfigureAwait(false);
     }
 
     #endregion
@@ -413,28 +417,28 @@ public class PaperlessClient
         if (!string.IsNullOrEmpty(ordering))
             queryParams["ordering"] = ordering;
 
-        return await GetAsync<PaginatedResult<Tag>>($"api/tags/?{queryParams}", cancellationToken)
+        return await GetAsync<PaginatedResult<Tag>>($"api/tags/?{queryParams}", cancellationToken).ConfigureAwait(false)
                ?? new PaginatedResult<Tag>();
     }
 
     public async Task<Tag?> GetTagAsync(int id, CancellationToken cancellationToken = default)
     {
-        return await GetAsync<Tag>($"api/tags/{id}/", cancellationToken);
+        return await GetAsync<Tag>($"api/tags/{id}/", cancellationToken).ConfigureAwait(false);
     }
 
     public async Task<Tag?> CreateTagAsync(TagCreateRequest request, CancellationToken cancellationToken = default)
     {
-        return await PostAsync<Tag>("api/tags/", request, cancellationToken);
+        return await PostAsync<Tag>("api/tags/", request, cancellationToken).ConfigureAwait(false);
     }
 
     public async Task<Tag?> UpdateTagAsync(int id, TagUpdateRequest request, CancellationToken cancellationToken = default)
     {
-        return await PatchAsync<Tag>($"api/tags/{id}/", request, cancellationToken);
+        return await PatchAsync<Tag>($"api/tags/{id}/", request, cancellationToken).ConfigureAwait(false);
     }
 
     public async Task<bool> DeleteTagAsync(int id, CancellationToken cancellationToken = default)
     {
-        return await DeleteAsync($"api/tags/{id}/", cancellationToken);
+        return await DeleteAsync($"api/tags/{id}/", cancellationToken).ConfigureAwait(false);
     }
 
     #endregion
@@ -449,28 +453,28 @@ public class PaperlessClient
         if (!string.IsNullOrEmpty(ordering))
             queryParams["ordering"] = ordering;
 
-        return await GetAsync<PaginatedResult<Correspondent>>($"api/correspondents/?{queryParams}", cancellationToken)
+        return await GetAsync<PaginatedResult<Correspondent>>($"api/correspondents/?{queryParams}", cancellationToken).ConfigureAwait(false)
                ?? new PaginatedResult<Correspondent>();
     }
 
     public async Task<Correspondent?> GetCorrespondentAsync(int id, CancellationToken cancellationToken = default)
     {
-        return await GetAsync<Correspondent>($"api/correspondents/{id}/", cancellationToken);
+        return await GetAsync<Correspondent>($"api/correspondents/{id}/", cancellationToken).ConfigureAwait(false);
     }
 
     public async Task<Correspondent?> CreateCorrespondentAsync(CorrespondentCreateRequest request, CancellationToken cancellationToken = default)
     {
-        return await PostAsync<Correspondent>("api/correspondents/", request, cancellationToken);
+        return await PostAsync<Correspondent>("api/correspondents/", request, cancellationToken).ConfigureAwait(false);
     }
 
     public async Task<Correspondent?> UpdateCorrespondentAsync(int id, CorrespondentUpdateRequest request, CancellationToken cancellationToken = default)
     {
-        return await PatchAsync<Correspondent>($"api/correspondents/{id}/", request, cancellationToken);
+        return await PatchAsync<Correspondent>($"api/correspondents/{id}/", request, cancellationToken).ConfigureAwait(false);
     }
 
     public async Task<bool> DeleteCorrespondentAsync(int id, CancellationToken cancellationToken = default)
     {
-        return await DeleteAsync($"api/correspondents/{id}/", cancellationToken);
+        return await DeleteAsync($"api/correspondents/{id}/", cancellationToken).ConfigureAwait(false);
     }
 
     #endregion
@@ -485,28 +489,28 @@ public class PaperlessClient
         if (!string.IsNullOrEmpty(ordering))
             queryParams["ordering"] = ordering;
 
-        return await GetAsync<PaginatedResult<DocumentType>>($"api/document_types/?{queryParams}", cancellationToken)
+        return await GetAsync<PaginatedResult<DocumentType>>($"api/document_types/?{queryParams}", cancellationToken).ConfigureAwait(false)
                ?? new PaginatedResult<DocumentType>();
     }
 
     public async Task<DocumentType?> GetDocumentTypeAsync(int id, CancellationToken cancellationToken = default)
     {
-        return await GetAsync<DocumentType>($"api/document_types/{id}/", cancellationToken);
+        return await GetAsync<DocumentType>($"api/document_types/{id}/", cancellationToken).ConfigureAwait(false);
     }
 
     public async Task<DocumentType?> CreateDocumentTypeAsync(DocumentTypeCreateRequest request, CancellationToken cancellationToken = default)
     {
-        return await PostAsync<DocumentType>("api/document_types/", request, cancellationToken);
+        return await PostAsync<DocumentType>("api/document_types/", request, cancellationToken).ConfigureAwait(false);
     }
 
     public async Task<DocumentType?> UpdateDocumentTypeAsync(int id, DocumentTypeUpdateRequest request, CancellationToken cancellationToken = default)
     {
-        return await PatchAsync<DocumentType>($"api/document_types/{id}/", request, cancellationToken);
+        return await PatchAsync<DocumentType>($"api/document_types/{id}/", request, cancellationToken).ConfigureAwait(false);
     }
 
     public async Task<bool> DeleteDocumentTypeAsync(int id, CancellationToken cancellationToken = default)
     {
-        return await DeleteAsync($"api/document_types/{id}/", cancellationToken);
+        return await DeleteAsync($"api/document_types/{id}/", cancellationToken).ConfigureAwait(false);
     }
 
     #endregion
@@ -521,28 +525,28 @@ public class PaperlessClient
         if (!string.IsNullOrEmpty(ordering))
             queryParams["ordering"] = ordering;
 
-        return await GetAsync<PaginatedResult<StoragePath>>($"api/storage_paths/?{queryParams}", cancellationToken)
+        return await GetAsync<PaginatedResult<StoragePath>>($"api/storage_paths/?{queryParams}", cancellationToken).ConfigureAwait(false)
                ?? new PaginatedResult<StoragePath>();
     }
 
     public async Task<StoragePath?> GetStoragePathAsync(int id, CancellationToken cancellationToken = default)
     {
-        return await GetAsync<StoragePath>($"api/storage_paths/{id}/", cancellationToken);
+        return await GetAsync<StoragePath>($"api/storage_paths/{id}/", cancellationToken).ConfigureAwait(false);
     }
 
     public async Task<StoragePath?> CreateStoragePathAsync(StoragePathCreateRequest request, CancellationToken cancellationToken = default)
     {
-        return await PostAsync<StoragePath>("api/storage_paths/", request, cancellationToken);
+        return await PostAsync<StoragePath>("api/storage_paths/", request, cancellationToken).ConfigureAwait(false);
     }
 
     public async Task<StoragePath?> UpdateStoragePathAsync(int id, StoragePathUpdateRequest request, CancellationToken cancellationToken = default)
     {
-        return await PatchAsync<StoragePath>($"api/storage_paths/{id}/", request, cancellationToken);
+        return await PatchAsync<StoragePath>($"api/storage_paths/{id}/", request, cancellationToken).ConfigureAwait(false);
     }
 
     public async Task<bool> DeleteStoragePathAsync(int id, CancellationToken cancellationToken = default)
     {
-        return await DeleteAsync($"api/storage_paths/{id}/", cancellationToken);
+        return await DeleteAsync($"api/storage_paths/{id}/", cancellationToken).ConfigureAwait(false);
     }
 
     #endregion
@@ -555,28 +559,28 @@ public class PaperlessClient
         queryParams["page"] = page.ToString();
         queryParams["page_size"] = (pageSize ?? _options.MaxPageSize).ToString();
 
-        return await GetAsync<PaginatedResult<CustomField>>($"api/custom_fields/?{queryParams}", cancellationToken)
+        return await GetAsync<PaginatedResult<CustomField>>($"api/custom_fields/?{queryParams}", cancellationToken).ConfigureAwait(false)
                ?? new PaginatedResult<CustomField>();
     }
 
     public async Task<CustomField?> GetCustomFieldAsync(int id, CancellationToken cancellationToken = default)
     {
-        return await GetAsync<CustomField>($"api/custom_fields/{id}/", cancellationToken);
+        return await GetAsync<CustomField>($"api/custom_fields/{id}/", cancellationToken).ConfigureAwait(false);
     }
 
     public async Task<CustomField?> CreateCustomFieldAsync(CustomFieldCreateRequest request, CancellationToken cancellationToken = default)
     {
-        return await PostAsync<CustomField>("api/custom_fields/", request, cancellationToken);
+        return await PostAsync<CustomField>("api/custom_fields/", request, cancellationToken).ConfigureAwait(false);
     }
 
     public async Task<CustomField?> UpdateCustomFieldAsync(int id, CustomFieldUpdateRequest request, CancellationToken cancellationToken = default)
     {
-        return await PatchAsync<CustomField>($"api/custom_fields/{id}/", request, cancellationToken);
+        return await PatchAsync<CustomField>($"api/custom_fields/{id}/", request, cancellationToken).ConfigureAwait(false);
     }
 
     public async Task<bool> DeleteCustomFieldAsync(int id, CancellationToken cancellationToken = default)
     {
-        return await DeleteAsync($"api/custom_fields/{id}/", cancellationToken);
+        return await DeleteAsync($"api/custom_fields/{id}/", cancellationToken).ConfigureAwait(false);
     }
 
     #endregion
@@ -603,7 +607,7 @@ public class PaperlessClient
 
         try
         {
-            var response = await _httpClient.PostAsJsonAsync("api/bulk_edit_objects/", request, JsonOptions, cancellationToken);
+            var response = await _httpClient.PostAsJsonAsync("api/bulk_edit_objects/", request, JsonOptions, cancellationToken).ConfigureAwait(false);
             return response.IsSuccessStatusCode;
         }
         catch (Exception ex)
@@ -621,14 +625,14 @@ public class PaperlessClient
     {
         try
         {
-            var response = await _httpClient.GetAsync(url, cancellationToken);
+            var response = await _httpClient.GetAsync(url, cancellationToken).ConfigureAwait(false);
 
             if (response.IsSuccessStatusCode)
             {
-                return await response.Content.ReadFromJsonAsync<T>(JsonOptions, cancellationToken);
+                return await response.Content.ReadFromJsonAsync<T>(JsonOptions, cancellationToken).ConfigureAwait(false);
             }
 
-            await LogErrorResponse(response, "GET", url);
+            await LogErrorResponse(response, "GET", url).ConfigureAwait(false);
             return default;
         }
         catch (Exception ex)
@@ -642,14 +646,14 @@ public class PaperlessClient
     {
         try
         {
-            var response = await _httpClient.PostAsJsonAsync(url, request, JsonOptions, cancellationToken);
+            var response = await _httpClient.PostAsJsonAsync(url, request, JsonOptions, cancellationToken).ConfigureAwait(false);
 
             if (response.IsSuccessStatusCode)
             {
-                return await response.Content.ReadFromJsonAsync<T>(JsonOptions, cancellationToken);
+                return await response.Content.ReadFromJsonAsync<T>(JsonOptions, cancellationToken).ConfigureAwait(false);
             }
 
-            await LogErrorResponse(response, "POST", url);
+            await LogErrorResponse(response, "POST", url).ConfigureAwait(false);
             return default;
         }
         catch (Exception ex)
@@ -664,14 +668,14 @@ public class PaperlessClient
         try
         {
             var content = JsonContent.Create(request, options: JsonOptions);
-            var response = await _httpClient.PatchAsync(url, content, cancellationToken);
+            var response = await _httpClient.PatchAsync(url, content, cancellationToken).ConfigureAwait(false);
 
             if (response.IsSuccessStatusCode)
             {
-                return await response.Content.ReadFromJsonAsync<T>(JsonOptions, cancellationToken);
+                return await response.Content.ReadFromJsonAsync<T>(JsonOptions, cancellationToken).ConfigureAwait(false);
             }
 
-            await LogErrorResponse(response, "PATCH", url);
+            await LogErrorResponse(response, "PATCH", url).ConfigureAwait(false);
             return default;
         }
         catch (Exception ex)
@@ -685,14 +689,14 @@ public class PaperlessClient
     {
         try
         {
-            var response = await _httpClient.DeleteAsync(url, cancellationToken);
+            var response = await _httpClient.DeleteAsync(url, cancellationToken).ConfigureAwait(false);
 
             if (response.IsSuccessStatusCode || response.StatusCode == HttpStatusCode.NoContent)
             {
                 return true;
             }
 
-            await LogErrorResponse(response, "DELETE", url);
+            await LogErrorResponse(response, "DELETE", url).ConfigureAwait(false);
             return false;
         }
         catch (Exception ex)
@@ -704,7 +708,7 @@ public class PaperlessClient
 
     private async Task LogErrorResponse(HttpResponseMessage response, string method, string url)
     {
-        var body = await response.Content.ReadAsStringAsync();
+        var body = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
         _logger.LogError("{Method} {Url} failed with {StatusCode}: {Body}",
             method, url, (int)response.StatusCode, body);
     }

@@ -21,7 +21,7 @@ public static class CustomFieldTools
         [Description("Page number (default: 1)")] int page = 1,
         [Description("Page size (default: 25, max: 100)")] int pageSize = 25)
     {
-        var result = await client.GetCustomFieldsAsync(page, Math.Min(pageSize, 100));
+        var result = await client.GetCustomFieldsAsync(page, Math.Min(pageSize, 100)).ConfigureAwait(false);
 
         var response = McpResponse<object>.Success(
             result.Results,
@@ -43,7 +43,7 @@ public static class CustomFieldTools
         PaperlessClient client,
         [Description("Custom field ID")] int id)
     {
-        var customField = await client.GetCustomFieldAsync(id);
+        var customField = await client.GetCustomFieldAsync(id).ConfigureAwait(false);
 
         if (customField == null)
         {
@@ -95,7 +95,7 @@ public static class CustomFieldTools
             ExtraData = extraData
         };
 
-        var customField = await client.CreateCustomFieldAsync(request);
+        var customField = await client.CreateCustomFieldAsync(request).ConfigureAwait(false);
 
         if (customField == null)
         {
@@ -146,7 +146,7 @@ public static class CustomFieldTools
             ExtraData = extraData
         };
 
-        var customField = await client.UpdateCustomFieldAsync(id, request);
+        var customField = await client.UpdateCustomFieldAsync(id, request).ConfigureAwait(false);
 
         if (customField == null)
         {
@@ -174,7 +174,7 @@ public static class CustomFieldTools
     {
         if (!confirm)
         {
-            var customField = await client.GetCustomFieldAsync(id);
+            var customField = await client.GetCustomFieldAsync(id).ConfigureAwait(false);
 
             if (customField == null)
             {
@@ -195,7 +195,7 @@ public static class CustomFieldTools
             return JsonSerializer.Serialize(dryRunResponse);
         }
 
-        var success = await client.DeleteCustomFieldAsync(id);
+        var success = await client.DeleteCustomFieldAsync(id).ConfigureAwait(false);
 
         if (!success)
         {
@@ -223,7 +223,7 @@ public static class CustomFieldTools
         [Description("Value to assign (string, number, boolean, or date depending on field type)")] string value)
     {
         // Get current document to update its custom fields
-        var document = await client.GetDocumentAsync(documentId);
+        var document = await client.GetDocumentAsync(documentId).ConfigureAwait(false);
 
         if (document == null)
         {
@@ -236,7 +236,7 @@ public static class CustomFieldTools
         }
 
         // Get field definition to understand the data type
-        var field = await client.GetCustomFieldAsync(fieldId);
+        var field = await client.GetCustomFieldAsync(fieldId).ConfigureAwait(false);
 
         if (field == null)
         {
@@ -277,7 +277,7 @@ public static class CustomFieldTools
             CustomFields = customFields
         };
 
-        var updatedDocument = await client.UpdateDocumentAsync(documentId, updateRequest);
+        var updatedDocument = await client.UpdateDocumentAsync(documentId, updateRequest).ConfigureAwait(false);
 
         if (updatedDocument == null)
         {

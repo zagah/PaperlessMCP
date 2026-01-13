@@ -16,7 +16,7 @@ public static class HealthTools
     [Description("Verify connectivity and authentication with the Paperless-ngx instance. Returns server version if available.")]
     public static async Task<string> Ping(PaperlessClient client)
     {
-        var (success, version, error) = await client.PingAsync();
+        var (success, version, error) = await client.PingAsync().ConfigureAwait(false);
 
         if (success)
         {
@@ -39,8 +39,8 @@ public static class HealthTools
     [Description("Return supported API endpoints and detected Paperless-ngx version information.")]
     public static async Task<string> GetCapabilities(PaperlessClient client)
     {
-        var (pingSuccess, version, _) = await client.PingAsync();
-        var (statusSuccess, status, _) = await client.GetStatusAsync();
+        var (pingSuccess, version, _) = await client.PingAsync().ConfigureAwait(false);
+        var (statusSuccess, status, _) = await client.GetStatusAsync().ConfigureAwait(false);
 
         var capabilities = new
         {

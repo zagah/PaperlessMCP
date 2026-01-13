@@ -4,6 +4,7 @@ using ModelContextProtocol.Server;
 using PaperlessMCP.Client;
 using PaperlessMCP.Models.Common;
 using PaperlessMCP.Models.StoragePaths;
+using static PaperlessMCP.Utils.ParsingHelpers;
 
 namespace PaperlessMCP.Tools;
 
@@ -21,7 +22,7 @@ public static class StoragePathTools
         [Description("Page size (default: 25, max: 100)")] int pageSize = 25,
         [Description("Ordering field (e.g., 'name', '-document_count')")] string? ordering = null)
     {
-        var result = await client.GetStoragePathsAsync(page, Math.Min(pageSize, 100), ordering);
+        var result = await client.GetStoragePathsAsync(page, Math.Min(pageSize, 100), ordering).ConfigureAwait(false);
 
         var response = McpResponse<object>.Success(
             result.Results,
@@ -43,7 +44,7 @@ public static class StoragePathTools
         PaperlessClient client,
         [Description("Storage path ID")] int id)
     {
-        var storagePath = await client.GetStoragePathAsync(id);
+        var storagePath = await client.GetStoragePathAsync(id).ConfigureAwait(false);
 
         if (storagePath == null)
         {
@@ -79,7 +80,7 @@ public static class StoragePathTools
             MatchingAlgorithm = matchingAlgorithm
         };
 
-        var storagePath = await client.CreateStoragePathAsync(request);
+        var storagePath = await client.CreateStoragePathAsync(request).ConfigureAwait(false);
 
         if (storagePath == null)
         {
@@ -116,7 +117,7 @@ public static class StoragePathTools
             MatchingAlgorithm = matchingAlgorithm
         };
 
-        var storagePath = await client.UpdateStoragePathAsync(id, request);
+        var storagePath = await client.UpdateStoragePathAsync(id, request).ConfigureAwait(false);
 
         if (storagePath == null)
         {
@@ -144,7 +145,7 @@ public static class StoragePathTools
     {
         if (!confirm)
         {
-            var storagePath = await client.GetStoragePathAsync(id);
+            var storagePath = await client.GetStoragePathAsync(id).ConfigureAwait(false);
 
             if (storagePath == null)
             {
@@ -165,7 +166,7 @@ public static class StoragePathTools
             return JsonSerializer.Serialize(dryRunResponse);
         }
 
-        var success = await client.DeleteStoragePathAsync(id);
+        var success = await client.DeleteStoragePathAsync(id).ConfigureAwait(false);
 
         if (!success)
         {
@@ -223,7 +224,7 @@ public static class StoragePathTools
             return JsonSerializer.Serialize(dryRunResponse);
         }
 
-        var success = await client.BulkEditObjectsAsync(ids, "storage_paths", "delete");
+        var success = await client.BulkEditObjectsAsync(ids, "storage_paths", "delete").ConfigureAwait(false);
 
         if (!success)
         {
@@ -248,15 +249,4 @@ public static class StoragePathTools
         return JsonSerializer.Serialize(response);
     }
 
-    private static int[]? ParseIntArray(string? input)
-    {
-        if (string.IsNullOrWhiteSpace(input))
-            return null;
-
-        return input.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
-            .Select(s => int.TryParse(s, out var n) ? n : (int?)null)
-            .Where(n => n.HasValue)
-            .Select(n => n!.Value)
-            .ToArray();
-    }
 }

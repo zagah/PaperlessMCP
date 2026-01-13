@@ -4,6 +4,7 @@ using ModelContextProtocol.Server;
 using PaperlessMCP.Client;
 using PaperlessMCP.Models.Common;
 using PaperlessMCP.Models.Correspondents;
+using static PaperlessMCP.Utils.ParsingHelpers;
 
 namespace PaperlessMCP.Tools;
 
@@ -21,7 +22,7 @@ public static class CorrespondentTools
         [Description("Page size (default: 25, max: 100)")] int pageSize = 25,
         [Description("Ordering field (e.g., 'name', '-document_count', 'last_correspondence')")] string? ordering = null)
     {
-        var result = await client.GetCorrespondentsAsync(page, Math.Min(pageSize, 100), ordering);
+        var result = await client.GetCorrespondentsAsync(page, Math.Min(pageSize, 100), ordering).ConfigureAwait(false);
 
         var response = McpResponse<object>.Success(
             result.Results,
@@ -43,7 +44,7 @@ public static class CorrespondentTools
         PaperlessClient client,
         [Description("Correspondent ID")] int id)
     {
-        var correspondent = await client.GetCorrespondentAsync(id);
+        var correspondent = await client.GetCorrespondentAsync(id).ConfigureAwait(false);
 
         if (correspondent == null)
         {
@@ -77,7 +78,7 @@ public static class CorrespondentTools
             MatchingAlgorithm = matchingAlgorithm
         };
 
-        var correspondent = await client.CreateCorrespondentAsync(request);
+        var correspondent = await client.CreateCorrespondentAsync(request).ConfigureAwait(false);
 
         if (correspondent == null)
         {
@@ -112,7 +113,7 @@ public static class CorrespondentTools
             MatchingAlgorithm = matchingAlgorithm
         };
 
-        var correspondent = await client.UpdateCorrespondentAsync(id, request);
+        var correspondent = await client.UpdateCorrespondentAsync(id, request).ConfigureAwait(false);
 
         if (correspondent == null)
         {
@@ -140,7 +141,7 @@ public static class CorrespondentTools
     {
         if (!confirm)
         {
-            var correspondent = await client.GetCorrespondentAsync(id);
+            var correspondent = await client.GetCorrespondentAsync(id).ConfigureAwait(false);
 
             if (correspondent == null)
             {
@@ -161,7 +162,7 @@ public static class CorrespondentTools
             return JsonSerializer.Serialize(dryRunResponse);
         }
 
-        var success = await client.DeleteCorrespondentAsync(id);
+        var success = await client.DeleteCorrespondentAsync(id).ConfigureAwait(false);
 
         if (!success)
         {
@@ -219,7 +220,7 @@ public static class CorrespondentTools
             return JsonSerializer.Serialize(dryRunResponse);
         }
 
-        var success = await client.BulkEditObjectsAsync(ids, "correspondents", "delete");
+        var success = await client.BulkEditObjectsAsync(ids, "correspondents", "delete").ConfigureAwait(false);
 
         if (!success)
         {
@@ -244,15 +245,4 @@ public static class CorrespondentTools
         return JsonSerializer.Serialize(response);
     }
 
-    private static int[]? ParseIntArray(string? input)
-    {
-        if (string.IsNullOrWhiteSpace(input))
-            return null;
-
-        return input.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
-            .Select(s => int.TryParse(s, out var n) ? n : (int?)null)
-            .Where(n => n.HasValue)
-            .Select(n => n!.Value)
-            .ToArray();
-    }
 }

@@ -4,6 +4,7 @@ using ModelContextProtocol.Server;
 using PaperlessMCP.Client;
 using PaperlessMCP.Models.Common;
 using PaperlessMCP.Models.Tags;
+using static PaperlessMCP.Utils.ParsingHelpers;
 
 namespace PaperlessMCP.Tools;
 
@@ -21,7 +22,7 @@ public static class TagTools
         [Description("Page size (default: 25, max: 100)")] int pageSize = 25,
         [Description("Ordering field (e.g., 'name', '-document_count')")] string? ordering = null)
     {
-        var result = await client.GetTagsAsync(page, Math.Min(pageSize, 100), ordering);
+        var result = await client.GetTagsAsync(page, Math.Min(pageSize, 100), ordering).ConfigureAwait(false);
 
         var response = McpResponse<object>.Success(
             result.Results,
@@ -43,7 +44,7 @@ public static class TagTools
         PaperlessClient client,
         [Description("Tag ID")] int id)
     {
-        var tag = await client.GetTagAsync(id);
+        var tag = await client.GetTagAsync(id).ConfigureAwait(false);
 
         if (tag == null)
         {
@@ -81,7 +82,7 @@ public static class TagTools
             IsInboxTag = isInboxTag
         };
 
-        var tag = await client.CreateTagAsync(request);
+        var tag = await client.CreateTagAsync(request).ConfigureAwait(false);
 
         if (tag == null)
         {
@@ -120,7 +121,7 @@ public static class TagTools
             IsInboxTag = isInboxTag
         };
 
-        var tag = await client.UpdateTagAsync(id, request);
+        var tag = await client.UpdateTagAsync(id, request).ConfigureAwait(false);
 
         if (tag == null)
         {
@@ -148,7 +149,7 @@ public static class TagTools
     {
         if (!confirm)
         {
-            var tag = await client.GetTagAsync(id);
+            var tag = await client.GetTagAsync(id).ConfigureAwait(false);
 
             if (tag == null)
             {
@@ -169,7 +170,7 @@ public static class TagTools
             return JsonSerializer.Serialize(dryRunResponse);
         }
 
-        var success = await client.DeleteTagAsync(id);
+        var success = await client.DeleteTagAsync(id).ConfigureAwait(false);
 
         if (!success)
         {
@@ -227,7 +228,7 @@ public static class TagTools
             return JsonSerializer.Serialize(dryRunResponse);
         }
 
-        var success = await client.BulkEditObjectsAsync(ids, "tags", "delete");
+        var success = await client.BulkEditObjectsAsync(ids, "tags", "delete").ConfigureAwait(false);
 
         if (!success)
         {
@@ -252,15 +253,4 @@ public static class TagTools
         return JsonSerializer.Serialize(response);
     }
 
-    private static int[]? ParseIntArray(string? input)
-    {
-        if (string.IsNullOrWhiteSpace(input))
-            return null;
-
-        return input.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
-            .Select(s => int.TryParse(s, out var n) ? n : (int?)null)
-            .Where(n => n.HasValue)
-            .Select(n => n!.Value)
-            .ToArray();
-    }
 }

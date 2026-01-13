@@ -4,6 +4,7 @@ using ModelContextProtocol.Server;
 using PaperlessMCP.Client;
 using PaperlessMCP.Models.Common;
 using PaperlessMCP.Models.DocumentTypes;
+using static PaperlessMCP.Utils.ParsingHelpers;
 
 namespace PaperlessMCP.Tools;
 
@@ -21,7 +22,7 @@ public static class DocumentTypeTools
         [Description("Page size (default: 25, max: 100)")] int pageSize = 25,
         [Description("Ordering field (e.g., 'name', '-document_count')")] string? ordering = null)
     {
-        var result = await client.GetDocumentTypesAsync(page, Math.Min(pageSize, 100), ordering);
+        var result = await client.GetDocumentTypesAsync(page, Math.Min(pageSize, 100), ordering).ConfigureAwait(false);
 
         var response = McpResponse<object>.Success(
             result.Results,
@@ -43,7 +44,7 @@ public static class DocumentTypeTools
         PaperlessClient client,
         [Description("Document type ID")] int id)
     {
-        var documentType = await client.GetDocumentTypeAsync(id);
+        var documentType = await client.GetDocumentTypeAsync(id).ConfigureAwait(false);
 
         if (documentType == null)
         {
@@ -77,7 +78,7 @@ public static class DocumentTypeTools
             MatchingAlgorithm = matchingAlgorithm
         };
 
-        var documentType = await client.CreateDocumentTypeAsync(request);
+        var documentType = await client.CreateDocumentTypeAsync(request).ConfigureAwait(false);
 
         if (documentType == null)
         {
@@ -112,7 +113,7 @@ public static class DocumentTypeTools
             MatchingAlgorithm = matchingAlgorithm
         };
 
-        var documentType = await client.UpdateDocumentTypeAsync(id, request);
+        var documentType = await client.UpdateDocumentTypeAsync(id, request).ConfigureAwait(false);
 
         if (documentType == null)
         {
@@ -140,7 +141,7 @@ public static class DocumentTypeTools
     {
         if (!confirm)
         {
-            var documentType = await client.GetDocumentTypeAsync(id);
+            var documentType = await client.GetDocumentTypeAsync(id).ConfigureAwait(false);
 
             if (documentType == null)
             {
@@ -161,7 +162,7 @@ public static class DocumentTypeTools
             return JsonSerializer.Serialize(dryRunResponse);
         }
 
-        var success = await client.DeleteDocumentTypeAsync(id);
+        var success = await client.DeleteDocumentTypeAsync(id).ConfigureAwait(false);
 
         if (!success)
         {
@@ -219,7 +220,7 @@ public static class DocumentTypeTools
             return JsonSerializer.Serialize(dryRunResponse);
         }
 
-        var success = await client.BulkEditObjectsAsync(ids, "document_types", "delete");
+        var success = await client.BulkEditObjectsAsync(ids, "document_types", "delete").ConfigureAwait(false);
 
         if (!success)
         {
@@ -244,15 +245,4 @@ public static class DocumentTypeTools
         return JsonSerializer.Serialize(response);
     }
 
-    private static int[]? ParseIntArray(string? input)
-    {
-        if (string.IsNullOrWhiteSpace(input))
-            return null;
-
-        return input.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
-            .Select(s => int.TryParse(s, out var n) ? n : (int?)null)
-            .Where(n => n.HasValue)
-            .Select(n => n!.Value)
-            .ToArray();
-    }
 }

@@ -4,6 +4,7 @@ using ModelContextProtocol.Server;
 using PaperlessMCP.Client;
 using PaperlessMCP.Models.Common;
 using PaperlessMCP.Models.Documents;
+using static PaperlessMCP.Utils.ParsingHelpers;
 
 namespace PaperlessMCP.Tools;
 
@@ -57,7 +58,7 @@ public static class DocumentTools
             page: page,
             pageSize: Math.Min(pageSize, 100),
             ordering: ordering
-        );
+        ).ConfigureAwait(false);
 
         // Map to lightweight summaries to reduce response size
         var summaries = result.Results
@@ -87,7 +88,7 @@ public static class DocumentTools
         PaperlessClient client,
         [Description("Document ID")] int id)
     {
-        var document = await client.GetDocumentAsync(id);
+        var document = await client.GetDocumentAsync(id).ConfigureAwait(false);
 
         if (document == null)
         {
@@ -112,7 +113,7 @@ public static class DocumentTools
         PaperlessClient client,
         [Description("Document ID")] int id)
     {
-        var document = await client.GetDocumentAsync(id);
+        var document = await client.GetDocumentAsync(id).ConfigureAwait(false);
 
         if (document == null)
         {
@@ -139,7 +140,7 @@ public static class DocumentTools
         PaperlessClient client,
         [Description("Document ID")] int id)
     {
-        var document = await client.GetDocumentAsync(id);
+        var document = await client.GetDocumentAsync(id).ConfigureAwait(false);
 
         if (document == null)
         {
@@ -166,7 +167,7 @@ public static class DocumentTools
         PaperlessClient client,
         [Description("Document ID")] int id)
     {
-        var document = await client.GetDocumentAsync(id);
+        var document = await client.GetDocumentAsync(id).ConfigureAwait(false);
 
         if (document == null)
         {
@@ -227,7 +228,7 @@ public static class DocumentTools
             Created = ParseDate(created)
         };
 
-        var taskId = await client.UploadDocumentAsync(fileBytes, fileName, metadata);
+        var taskId = await client.UploadDocumentAsync(fileBytes, fileName, metadata).ConfigureAwait(false);
 
         if (taskId == null)
         {
@@ -299,7 +300,7 @@ public static class DocumentTools
             Created = ParseDate(created)
         };
 
-        var (taskId, error) = await client.UploadDocumentFromPathAsync(filePath, metadata);
+        var (taskId, error) = await client.UploadDocumentFromPathAsync(filePath, metadata).ConfigureAwait(false);
 
         if (taskId == null)
         {
@@ -349,7 +350,7 @@ public static class DocumentTools
             Created = ParseDate(created)
         };
 
-        var document = await client.UpdateDocumentAsync(id, request);
+        var document = await client.UpdateDocumentAsync(id, request).ConfigureAwait(false);
 
         if (document == null)
         {
@@ -378,7 +379,7 @@ public static class DocumentTools
         if (!confirm)
         {
             // Get document info for dry run
-            var document = await client.GetDocumentAsync(id);
+            var document = await client.GetDocumentAsync(id).ConfigureAwait(false);
 
             if (document == null)
             {
@@ -405,7 +406,7 @@ public static class DocumentTools
             return JsonSerializer.Serialize(dryRunResponse);
         }
 
-        var success = await client.DeleteDocumentAsync(id);
+        var success = await client.DeleteDocumentAsync(id).ConfigureAwait(false);
 
         if (!success)
         {
@@ -485,7 +486,7 @@ public static class DocumentTools
             _ => null
         };
 
-        var success = await client.BulkEditDocumentsAsync(ids, operation, parameters);
+        var success = await client.BulkEditDocumentsAsync(ids, operation, parameters).ConfigureAwait(false);
 
         if (!success)
         {
@@ -519,7 +520,7 @@ public static class DocumentTools
     {
         if (!confirm)
         {
-            var document = await client.GetDocumentAsync(id);
+            var document = await client.GetDocumentAsync(id).ConfigureAwait(false);
 
             if (document == null)
             {
@@ -540,7 +541,7 @@ public static class DocumentTools
             return JsonSerializer.Serialize(dryRunResponse);
         }
 
-        var success = await client.BulkEditDocumentsAsync(new[] { id }, "reprocess");
+        var success = await client.BulkEditDocumentsAsync(new[] { id }, "reprocess").ConfigureAwait(false);
 
         if (!success)
         {
@@ -559,23 +560,4 @@ public static class DocumentTools
         return JsonSerializer.Serialize(response);
     }
 
-    private static int[]? ParseIntArray(string? input)
-    {
-        if (string.IsNullOrWhiteSpace(input))
-            return null;
-
-        return input.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
-            .Select(s => int.TryParse(s, out var n) ? n : (int?)null)
-            .Where(n => n.HasValue)
-            .Select(n => n!.Value)
-            .ToArray();
-    }
-
-    private static DateTime? ParseDate(string? input)
-    {
-        if (string.IsNullOrWhiteSpace(input))
-            return null;
-
-        return DateTime.TryParse(input, out var date) ? date : null;
-    }
 }
