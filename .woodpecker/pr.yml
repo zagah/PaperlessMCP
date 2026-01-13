@@ -2,20 +2,17 @@
 when:
   - event: pull_request
 
-skip_clone: true
+clone:
+  - name: clone
+    image: woodpeckerci/plugin-git
+    settings:
+      lfs: false
 
 steps:
-  - name: clone
-    image: alpine/git
-    commands:
-      - git clone --depth=1 ${CI_REPO_CLONE_URL} .
-      - git checkout ${CI_COMMIT_SHA}
-
   - name: restore
     image: mcr.microsoft.com/dotnet/sdk:10.0-preview
     commands:
       - dotnet restore
-    depends_on: [clone]
 
   - name: build
     image: mcr.microsoft.com/dotnet/sdk:10.0-preview
