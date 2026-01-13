@@ -1,5 +1,5 @@
 # Build stage
-FROM mcr.microsoft.com/dotnet/sdk:10.0-preview AS build
+FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
 ARG VERSION=0.0.0-dev
 WORKDIR /src
 
@@ -12,7 +12,7 @@ COPY . .
 RUN dotnet publish -c Release -o /app/publish /p:Version=${VERSION}
 
 # Runtime stage
-FROM mcr.microsoft.com/dotnet/aspnet:10.0-preview AS runtime
+FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS runtime
 ARG VERSION=0.0.0-dev
 WORKDIR /app
 

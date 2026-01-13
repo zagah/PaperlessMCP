@@ -13,18 +13,18 @@ clone:
 
 steps:
   - name: restore
-    image: mcr.microsoft.com/dotnet/sdk:10.0-preview
+    image: mcr.microsoft.com/dotnet/sdk:10.0
     commands:
       - dotnet restore
 
   - name: build
-    image: mcr.microsoft.com/dotnet/sdk:10.0-preview
+    image: mcr.microsoft.com/dotnet/sdk:10.0
     commands:
       - dotnet build --no-restore -c Release
     depends_on: [restore]
 
   - name: test
-    image: mcr.microsoft.com/dotnet/sdk:10.0-preview
+    image: mcr.microsoft.com/dotnet/sdk:10.0
     commands:
       - dotnet test --no-build -c Release --logger "console;verbosity=detailed"
     depends_on: [build]
@@ -88,7 +88,7 @@ steps:
 
   # Package NuGet
   - name: package
-    image: mcr.microsoft.com/dotnet/sdk:10.0-preview
+    image: mcr.microsoft.com/dotnet/sdk:10.0
     commands:
       - VERSION=$(cat .version)
       - echo "Packaging version $VERSION"
