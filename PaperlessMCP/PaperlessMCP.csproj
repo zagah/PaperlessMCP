@@ -7,6 +7,16 @@
     <RootNamespace>PaperlessMCP</RootNamespace>
     <AssemblyName>PaperlessMCP</AssemblyName>
     <DockerDefaultTargetOS>Linux</DockerDefaultTargetOS>
+
+    <!-- NuGet Package -->
+    <IsPackable>true</IsPackable>
+    <PackageId>PaperlessMCP</PackageId>
+    <Authors>Barry Walker</Authors>
+    <Description>Model Context Protocol server for Paperless-ngx document management</Description>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <PackageProjectUrl>https://github.com/barryw/PaperlessMCP</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/barryw/PaperlessMCP</RepositoryUrl>
+    <PackageTags>mcp;paperless;paperless-ngx;claude;ai</PackageTags>
   </PropertyGroup>
 
   <ItemGroup>
