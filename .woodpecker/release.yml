@@ -86,12 +86,7 @@ steps:
         echo "Building Docker image version: $VERSION"
         mkdir -p /kaniko/.docker
         echo "{\"auths\":{\"ghcr.io\":{\"username\":\"$GHCR_USERNAME\",\"password\":\"$GHCR_TOKEN\"}}}" > /kaniko/.docker/config.json
-        /kaniko/executor \
-          --context=$CI_WORKSPACE/PaperlessMCP \
-          --dockerfile=$CI_WORKSPACE/PaperlessMCP/Dockerfile \
-          --destination=ghcr.io/barryw/paperlessmcp:v${VERSION} \
-          --destination=ghcr.io/barryw/paperlessmcp:latest \
-          --build-arg=VERSION=${VERSION}
+        /kaniko/executor --context="$CI_WORKSPACE/PaperlessMCP" --dockerfile="$CI_WORKSPACE/PaperlessMCP/Dockerfile" --destination="ghcr.io/barryw/paperlessmcp:v$VERSION" --destination="ghcr.io/barryw/paperlessmcp:latest" --build-arg="VERSION=$VERSION"
     depends_on: [version]
 
   # Create git tag and push
