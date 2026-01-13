@@ -1,6 +1,6 @@
 variables:
   - &dotnet_image "mcr.microsoft.com/dotnet/sdk:10.0-preview"
-  - &docker_image "woodpeckerci/plugin-docker-buildx"
+  - &kaniko_image "gcr.io/kaniko-project/executor:debug"
 
 # =============================================================================
 # PULL REQUESTS - Build and test only
@@ -9,31 +9,22 @@ when:
   - event: pull_request
 
 steps:
-  pr-restore:
+  - name: restore
     image: *dotnet_image
     commands:
       - dotnet restore
 
-  pr-build:
+  - name: build
     image: *dotnet_image
     commands:
       - dotnet build --no-restore -c Release
-    depends_on: [pr-restore]
+    depends_on: [restore]
 
-  pr-test:
+  - name: test
     image: *dotnet_image
     commands:
       - dotnet test --no-build -c Release --logger "console;verbosity=detailed"
-    depends_on: [pr-build]
-
-  pr-docker-verify:
-    image: *docker_image
-    settings:
-      repo: ghcr.io/barryw/paperlessmcp
-      dockerfile: PaperlessMCP/Dockerfile
-      context: PaperlessMCP
-      dry_run: true
-    depends_on: [pr-test]
+    depends_on: [build]
 
 ---
 # =============================================================================
@@ -44,25 +35,25 @@ when:
     branch: main
 
 steps:
-  restore:
+  - name: restore
     image: *dotnet_image
     commands:
       - dotnet restore
 
-  build:
+  - name: build
     image: *dotnet_image
     commands:
       - dotnet build --no-restore -c Release
     depends_on: [restore]
 
-  test:
+  - name: test
     image: *dotnet_image
     commands:
       - dotnet test --no-build -c Release --logger "console;verbosity=detailed"
     depends_on: [build]
 
   # Determine next version based on conventional commits
-  version:
+  - name: version
     image: alpine/git
     commands:
       - apk add --no-cache bash
@@ -119,7 +110,7 @@ steps:
     depends_on: [test]
 
   # Package NuGet
-  package:
+  - name: package
     image: *dotnet_image
     commands:
       - VERSION=$(cat .version)
@@ -128,55 +119,46 @@ steps:
       - ls -la ./artifacts/
     depends_on: [version]
 
-  # Prepare Docker tags
-  docker-tags:
-    image: alpine
+  # Build and push Docker with Kaniko
+  - name: docker
+    image: *kaniko_image
+    environment:
+      GHCR_USERNAME:
+        from_secret: github_username
+      GHCR_TOKEN:
+        from_secret: github_token
     commands:
       - VERSION=$(cat .version)
-      - echo "latest" > .docker-tags
-      - echo "v${VERSION}" >> .docker-tags
-      - cat .docker-tags
+      - mkdir -p /kaniko/.docker
+      - echo "{\"auths\":{\"ghcr.io\":{\"username\":\"$GHCR_USERNAME\",\"password\":\"$GHCR_TOKEN\"}}}" > /kaniko/.docker/config.json
+      - /kaniko/executor
+        --context=$CI_WORKSPACE/PaperlessMCP
+        --dockerfile=$CI_WORKSPACE/PaperlessMCP/Dockerfile
+        --destination=ghcr.io/barryw/paperlessmcp:v${VERSION}
+        --destination=ghcr.io/barryw/paperlessmcp:latest
+        --build-arg=VERSION=${VERSION}
     depends_on: [version]
 
-  # Build and push Docker
-  docker:
-    image: *docker_image
-    settings:
-      repo: ghcr.io/barryw/paperlessmcp
-      dockerfile: PaperlessMCP/Dockerfile
-      context: PaperlessMCP
-      platforms:
-        - linux/amd64
-        - linux/arm64
-      tags_file: .docker-tags
-      registry: ghcr.io
-      username:
-        from_secret: github_username
-      password:
-        from_secret: github_token
-    depends_on: [docker-tags]
-
   # Create git tag and push
-  git-tag:
+  - name: git-tag
     image: alpine/git
-    secrets: [github_token]
+    environment:
+      GITHUB_TOKEN:
+        from_secret: github_token
     commands:
       - TAG=$(cat .tag)
       - VERSION=$(cat .version)
       - echo "Creating tag $TAG"
       - |
-        # Configure git for pushing
         git config user.email "ci@woodpecker.local"
         git config user.name "Woodpecker CI"
         git remote set-url origin https://x-access-token:${GITHUB_TOKEN}@github.com/barryw/PaperlessMCP.git
-
-        # Create and push tag
         git tag -a "$TAG" -m "Release $VERSION"
         git push origin "$TAG"
     depends_on: [package, docker]
 
   # Create GitHub release
-  release:
+  - name: release
     image: woodpeckerci/plugin-github-release
     settings:
       api_key:
