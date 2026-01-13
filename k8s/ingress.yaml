@@ -1,0 +1,19 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: paperless-mcp
+  labels:
+    app: paperless-mcp
+spec:
+  ingressClassName: traefik
+  rules:
+    - host: paperless-mcp.lan
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: paperless-mcp
+                port:
+                  number: 5000

@@ -1,0 +1,52 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: paperless-mcp
+  labels:
+    app: paperless-mcp
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: paperless-mcp
+  template:
+    metadata:
+      labels:
+        app: paperless-mcp
+    spec:
+      imagePullSecrets:
+        - name: ghcr-secret
+      containers:
+        - name: paperless-mcp
+          image: ghcr.io/barryw/paperlessmcp:latest
+          ports:
+            - containerPort: 5000
+              protocol: TCP
+          envFrom:
+            - secretRef:
+                name: paperless-mcp
+          env:
+            - name: PAPERLESS_API_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: paperless-token
+                  key: token
+          resources:
+            requests:
+              memory: "128Mi"
+              cpu: "100m"
+            limits:
+              memory: "256Mi"
+              cpu: "500m"
+          livenessProbe:
+            httpGet:
+              path: /mcp
+              port: 5000
+            initialDelaySeconds: 10
+            periodSeconds: 30
+          readinessProbe:
+            httpGet:
+              path: /mcp
+              port: 5000
+            initialDelaySeconds: 5
+            periodSeconds: 10
