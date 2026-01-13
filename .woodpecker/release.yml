@@ -1,53 +1,22 @@
-variables:
-  - &dotnet_image "mcr.microsoft.com/dotnet/sdk:10.0-preview"
-  - &kaniko_image "gcr.io/kaniko-project/executor:debug"
-
-# =============================================================================
-# PULL REQUESTS - Build and test only
-# =============================================================================
-when:
-  - event: pull_request
-
-steps:
-  - name: restore
-    image: *dotnet_image
-    commands:
-      - dotnet restore
-
-  - name: build
-    image: *dotnet_image
-    commands:
-      - dotnet build --no-restore -c Release
-    depends_on: [restore]
-
-  - name: test
-    image: *dotnet_image
-    commands:
-      - dotnet test --no-build -c Release --logger "console;verbosity=detailed"
-    depends_on: [build]
-
----
-# =============================================================================
-# MAIN BRANCH - Build, test, version, release
-# =============================================================================
+# Release Pipeline - Build, test, version, package, release
 when:
   - event: push
     branch: main
 
 steps:
   - name: restore
-    image: *dotnet_image
+    image: mcr.microsoft.com/dotnet/sdk:10.0-preview
     commands:
       - dotnet restore
 
   - name: build
-    image: *dotnet_image
+    image: mcr.microsoft.com/dotnet/sdk:10.0-preview
     commands:
       - dotnet build --no-restore -c Release
     depends_on: [restore]
 
   - name: test
-    image: *dotnet_image
+    image: mcr.microsoft.com/dotnet/sdk:10.0-preview
     commands:
       - dotnet test --no-build -c Release --logger "console;verbosity=detailed"
     depends_on: [build]
@@ -111,7 +80,7 @@ steps:
 
   # Package NuGet
   - name: package
-    image: *dotnet_image
+    image: mcr.microsoft.com/dotnet/sdk:10.0-preview
     commands:
       - VERSION=$(cat .version)
       - echo "Packaging version $VERSION"
@@ -121,7 +90,7 @@ steps:
 
   # Build and push Docker with Kaniko
   - name: docker
-    image: *kaniko_image
+    image: gcr.io/kaniko-project/executor:debug
     environment:
       GHCR_USERNAME:
         from_secret: github_username

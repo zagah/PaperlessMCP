@@ -1,0 +1,21 @@
+# Pull Request Pipeline - Build and test only
+when:
+  - event: pull_request
+
+steps:
+  - name: restore
+    image: mcr.microsoft.com/dotnet/sdk:10.0-preview
+    commands:
+      - dotnet restore
+
+  - name: build
+    image: mcr.microsoft.com/dotnet/sdk:10.0-preview
+    commands:
+      - dotnet build --no-restore -c Release
+    depends_on: [restore]
+
+  - name: test
+    image: mcr.microsoft.com/dotnet/sdk:10.0-preview
+    commands:
+      - dotnet test --no-build -c Release --logger "console;verbosity=detailed"
+    depends_on: [build]
