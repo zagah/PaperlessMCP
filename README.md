@@ -156,7 +156,10 @@ git tag v1.0.0
 git push origin v1.0.0
 ```
 
-**Docker Images:** `ghcr.io/barryw/paperlessmcp:latest`
+**Docker Images:**
+- `ghcr.io/barryw/paperlessmcp:latest` — Latest release
+- `ghcr.io/barryw/paperlessmcp:dev` — Latest main branch
+- `ghcr.io/barryw/paperlessmcp:vX.Y.Z` — Specific version
 
 ### Project Structure
 
