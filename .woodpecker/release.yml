@@ -77,9 +77,9 @@ steps:
     image: gcr.io/kaniko-project/executor:debug
     environment:
       GHCR_USERNAME:
-        from_secret: ghcr_username
+        from_secret: github_username
       GHCR_TOKEN:
-        from_secret: ghcr_token
+        from_secret: github_token
     commands:
       - |
         VERSION=$(cat .version)
@@ -94,7 +94,7 @@ steps:
     image: alpine/git
     environment:
       GITHUB_TOKEN:
-        from_secret: ghcr_token
+        from_secret: github_token
     commands:
       - |
         TAG=$(cat .tag)
@@ -113,7 +113,7 @@ steps:
     image: woodpeckerci/plugin-github-release
     settings:
       api_key:
-        from_secret: ghcr_token
+        from_secret: github_token
       files:
         - artifacts/*.nupkg
       prerelease: false
