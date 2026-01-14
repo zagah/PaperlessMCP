@@ -49,7 +49,7 @@ steps:
         if [ "$LATEST_TAG" = "v0.0.0" ]; then
           COMMITS=$(git log --pretty=format:"%s" HEAD)
         else
-          COMMITS=$(git log --pretty=format:"%s" "${LATEST_TAG}..HEAD")
+          COMMITS=$(git log --pretty=format:"%s" "$LATEST_TAG..HEAD")
         fi
 
         echo "=== Commits since last tag ==="
@@ -195,7 +195,7 @@ steps:
 
         git config user.email "ci@woodpecker.local"
         git config user.name "Woodpecker CI"
-        git remote set-url origin "https://x-access-token:${GITHUB_TOKEN}@github.com/barryw/PaperlessMCP.git"
+        git remote set-url origin "https://x-access-token:$GITHUB_TOKEN@github.com/barryw/PaperlessMCP.git"
 
         # Commit version.json update
         git add version.json
@@ -233,19 +233,19 @@ steps:
         if [ "$LATEST_TAG" = "v0.0.0" ]; then
           CHANGELOG=$(git log --pretty=format:"- %s" HEAD | head -20)
         else
-          CHANGELOG=$(git log --pretty=format:"- %s" "${LATEST_TAG}..HEAD^" | head -20)
+          CHANGELOG=$(git log --pretty=format:"- %s" "$LATEST_TAG..HEAD^" | head -20)
         fi
 
         # Escape JSON special characters
         CHANGELOG_JSON=$(echo "$CHANGELOG" | sed 's/\\/\\\\/g' | sed 's/"/\\"/g' | sed ':a;N;$!ba;s/\n/\\n/g')
 
-        BODY="## What's Changed\\n\\n${CHANGELOG_JSON}\\n\\n**Full Changelog**: https://github.com/barryw/PaperlessMCP/compare/${LATEST_TAG}...${TAG}"
+        BODY="## What's Changed\n\n$CHANGELOG_JSON\n\n**Full Changelog**: https://github.com/barryw/PaperlessMCP/compare/$LATEST_TAG...$TAG"
 
         curl -X POST \
-          -H "Authorization: token ${GITHUB_TOKEN}" \
+          -H "Authorization: token $GITHUB_TOKEN" \
           -H "Accept: application/vnd.github.v3+json" \
           https://api.github.com/repos/barryw/PaperlessMCP/releases \
-          -d "{\"tag_name\":\"${TAG}\",\"name\":\"Release ${VERSION}\",\"body\":\"${BODY}\",\"draft\":false,\"prerelease\":false}"
+          -d "{\"tag_name\":\"$TAG\",\"name\":\"Release $VERSION\",\"body\":\"$BODY\",\"draft\":false,\"prerelease\":false}"
     depends_on: [git-tag]
 
   # Deploy to Kubernetes
