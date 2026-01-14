@@ -1,0 +1,26 @@
+<Project>
+  <!--
+    Centralized version management for all projects.
+    Version is set by CI via /p:Version parameter, or defaults to 0.0.0-local for local builds.
+    This ensures all assemblies and packages have consistent versioning.
+  -->
+  <PropertyGroup>
+    <!-- Default version for local development builds -->
+    <Version Condition="'$(Version)' == ''">0.0.0-local</Version>
+
+    <!-- Extract major.minor.patch for AssemblyVersion (doesn't support prerelease tags) -->
+    <_VersionPrefix>$([System.Text.RegularExpressions.Regex]::Match($(Version), '^\d+\.\d+\.\d+').Value)</_VersionPrefix>
+    <_VersionPrefix Condition="'$(_VersionPrefix)' == ''">0.0.0</_VersionPrefix>
+
+    <!-- Apply version to all version-related properties -->
+    <AssemblyVersion>$(_VersionPrefix).0</AssemblyVersion>
+    <FileVersion>$(_VersionPrefix).0</FileVersion>
+    <InformationalVersion>$(Version)</InformationalVersion>
+    <PackageVersion>$(Version)</PackageVersion>
+
+    <!-- Common properties for all projects -->
+    <LangVersion>latest</LangVersion>
+    <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+</Project>
