@@ -1,0 +1,53 @@
+# Cocogitto configuration
+# https://docs.cocogitto.io/
+
+from_latest_tag = true
+tag_prefix = "v"
+branch_whitelist = ["main"]
+skip_ci = "[skip ci]"
+skip_untracked = false
+ignore_merge_commits = true
+disable_changelog = false
+disable_bump_commit = false
+
+# Pre-bump hooks run before the version is bumped
+pre_bump_hooks = []
+
+# Post-bump hooks run after version bump but before commit
+# Updates the Version element in the .csproj file
+# Uses perl for cross-platform compatibility (macOS sed differs from GNU sed)
+# Regex anchors to line start to avoid replacing PackageReference versions
+post_bump_hooks = [
+    "perl -i -pe 's/^(\\s*)<Version>.*<\\/Version>/$1<Version>{{version}}<\\/Version>/' PaperlessMCP/PaperlessMCP.csproj",
+]
+
+# Git hooks configuration
+# Validates commit messages follow conventional commit format
+[git_hooks.commit-msg]
+script = """#!/bin/sh
+set -e
+cog verify --file $1
+"""
+
+# Changelog configuration
+[changelog]
+path = "CHANGELOG.md"
+template = "remote"
+remote = "github.com"
+repository = "PaperlessMCP"
+owner = "barryw"
+
+# Commit type configurations
+# Types that bump versions are marked accordingly
+[commit_types]
+feat = { changelog_title = "Features", bump_minor = true }
+fix = { changelog_title = "Bug Fixes", bump_patch = true }
+docs = { changelog_title = "Documentation" }
+style = { changelog_title = "Styling" }
+refactor = { changelog_title = "Refactoring" }
+perf = { changelog_title = "Performance", bump_patch = true }
+test = { changelog_title = "Tests" }
+build = { changelog_title = "Build" }
+ci = { changelog_title = "CI/CD" }
+chore = { changelog_title = "Chores" }
+revert = { changelog_title = "Reverts", bump_patch = true }

@@ -61,3 +61,39 @@ Tests use xUnit with FluentAssertions for assertions, NSubstitute for mocking, a
 - Use [Conventional Commits](https://www.conventionalcommits.org/) - version bumps are automatic based on commit type (`fix:` = patch, `feat:` = minor, `feat!:` = major)
 - Trunk-based development: feature branches merge directly to `main`
 - All destructive operations (delete, bulk operations) require explicit `confirm=true` and default to dry-run mode
+
+## Versioning with Cocogitto (cog)
+
+This repo uses [Cocogitto](https://docs.cocogitto.io/) for conventional commit enforcement and version management.
+
+**Git hook:** A `commit-msg` hook enforces conventional commits. Install it after cloning:
+```bash
+cog install-hook commit-msg
+```
+
+**Commit format:**
+```
+<type>[optional scope]: <description>
+
+[optional body]
+
+[optional footer(s)]
+```
+
+Types: `feat`, `fix`, `docs`, `style`, `refactor`, `perf`, `test`, `build`, `ci`, `chore`, `revert`
+
+**Version bumping:**
+```bash
+cog bump --auto          # Auto-detect bump type from commits
+cog bump --patch         # Bump patch version (0.1.12 -> 0.1.13)
+cog bump --minor         # Bump minor version (0.1.12 -> 0.2.0)
+cog bump --major         # Bump major version (0.1.12 -> 1.0.0)
+cog bump --dry-run       # Preview what would happen
+```
+
+**Other useful commands:**
+```bash
+cog check                # Verify all commits follow conventional format
+cog changelog            # Generate changelog
+cog get-version          # Show current version
+```
