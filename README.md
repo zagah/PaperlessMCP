@@ -1,66 +1,111 @@
-<div align="center">
+# PaperlessMCP
 
-# 📄 PaperlessMCP
-
-**Model Context Protocol Server for Paperless-ngx**
+**Stop manually organizing your documents. Let AI do it.**
 
 [![Build Status](https://ci.barrywalker.io/api/badges/3/status.svg)](https://ci.barrywalker.io/repos/3)
-[![.NET 10](https://img.shields.io/badge/.NET-10.0-512BD4?logo=dotnet)](https://dotnet.microsoft.com/)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![MCP](https://img.shields.io/badge/MCP-0.2.0--preview.1-blue)](https://modelcontextprotocol.io/)
+[![Latest Release](https://img.shields.io/github/v/release/barryw/PaperlessMCP)](https://github.com/barryw/PaperlessMCP/releases/latest)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-*Seamlessly integrate your Paperless-ngx document management system with Claude via the Model Context Protocol*
+You've got a Paperless-ngx instance. You've got hundreds (thousands?) of documents. You *know* you should tag them, set correspondents, organize them properly. But who has time for that?
 
-[Features](#-features) • [Installation](#-installation) • [Configuration](#-configuration) • [API Reference](docs/API_REFERENCE.md) • [Contributing](#-contributing)
+PaperlessMCP connects your Paperless-ngx to any MCP-compatible AI. Now instead of clicking through the UI, you just ask:
 
-</div>
+> "Find all my tax documents from 2023"
+>
+> "Tag these 50 invoices as 'Business Expense' and set the correspondent to 'Acme Corp'"
+>
+> "Upload this receipt and figure out what it is"
+>
+> "What documents am I missing from my insurance folder?"
 
----
-
-## 🎯 Overview
-
-PaperlessMCP is a Model Context Protocol (MCP) server that bridges [Paperless-ngx](https://github.com/paperless-ngx/paperless-ngx) with AI assistants like Claude. It provides comprehensive document management capabilities through a modern, type-safe .NET implementation.
-
-### What is MCP?
-
-The [Model Context Protocol](https://modelcontextprotocol.io/) enables AI models to securely interact with external data sources and tools. PaperlessMCP implements this protocol to give Claude direct access to your document management system.
+It's Paperless-ngx on LLM steroids. An interface designed *specifically* for AI to manage your documents while you do literally anything else.
 
 ---
 
-## ✨ Features
+## What Can AI Do With Your Paperless?
 
-| Category | Capabilities |
-|----------|-------------|
-| **Documents** | Search, upload, download, update, delete, bulk operations, reprocess OCR |
-| **Tags** | Create, manage, auto-tagging rules, bulk delete |
-| **Correspondents** | Track document sources with auto-assignment |
-| **Document Types** | Classify documents with custom types |
-| **Storage Paths** | Organize files with template-based paths |
-| **Custom Fields** | Define metadata fields (string, date, boolean, monetary, etc.) |
+Everything. Full CRUD on every entity type:
 
-**Developer Features:** Dual transport (stdio/HTTP), pagination, dry-run mode, retry logic, comprehensive tests
+| You Say | AI Does |
+|---------|---------|
+| "Find receipts from Amazon over $100" | Searches documents with filters |
+| "Tag all 2024 invoices as 'Tax Year 2024'" | Bulk updates dozens of docs at once |
+| "Upload this PDF and file it appropriately" | Uploads, auto-tags, sets correspondent |
+| "Delete all documents tagged 'Junk'" | Removes with confirmation (dry-run by default) |
+| "Create a tag for medical records, make it red" | Creates tag with color |
+| "Who sends me the most documents?" | Lists correspondents by document count |
+| "Set up a storage path for legal documents" | Creates organized folder structure |
+
+**43 tools** covering:
+- **Documents** — search, upload, download, update, delete, bulk operations, OCR reprocessing
+- **Tags** — full CRUD with colors and matching rules
+- **Correspondents** — track who sends you stuff
+- **Document Types** — classify invoices, receipts, contracts, whatever
+- **Storage Paths** — organize files with smart templates
+- **Custom Fields** — add your own metadata (dates, amounts, URLs, etc.)
+
+All destructive operations require explicit confirmation and default to dry-run mode. AI can't nuke your archive by accident.
 
 ---
 
-## 🚀 Installation
+## Is PaperlessMCP Right For You?
 
-### Prerequisites
+**Yes, if:**
 
-- [.NET 10 SDK](https://dotnet.microsoft.com/download/dotnet/10.0)
-- A running [Paperless-ngx](https://github.com/paperless-ngx/paperless-ngx) instance
-- Paperless-ngx API token ([How to get one](https://docs.paperless-ngx.com/api/#authorization))
+- You run Paperless-ngx (self-hosted or cloud)
+- You use any AI assistant that speaks MCP (Claude, or anything else supporting the protocol)
+- You have a backlog of untagged documents and feel guilty about it
+- You'd rather say "organize this" than click 47 buttons
+- You want to query your documents in plain English
+- You think computers should work for you, not the other way around
 
-### Quick Start
+**No, if:**
+
+- You don't use Paperless-ngx (this isn't a general document tool)
+- You enjoy manually tagging documents (weirdo, but respect)
+- You don't trust AI with your files (fair, but you can dry-run everything first)
+
+**The sweet spot:** You've got Paperless running, you've got an MCP-compatible AI, and you want them to be friends.
+
+---
+
+## Getting Started
+
+### You'll Need
+
+1. **A Paperless-ngx instance** with an API token
+   *(Settings → Django Admin → Tokens → Create one for your user)*
+
+2. **An MCP-compatible AI** (Claude Desktop, or anything speaking the protocol)
+
+### Option 1: Docker (Recommended)
+
+The fastest path from zero to talking to your documents.
+
+[![Latest Release](https://img.shields.io/github/v/release/barryw/PaperlessMCP?label=latest)](https://github.com/barryw/PaperlessMCP/releases/latest)
 
 ```bash
-git clone https://github.com/barryw/PaperlessMCP.git
-cd PaperlessMCP
-dotnet build
+docker run -d \
+  --name paperless-mcp \
+  --restart unless-stopped \
+  -e PAPERLESS_BASE_URL=https://your-paperless.example.com \
+  -e PAPERLESS_API_TOKEN=your-token-here \
+  -p 5000:5000 \
+  ghcr.io/barryw/paperlessmcp:vX.Y.Z
 ```
 
-### Claude Desktop Integration
+> **Grab the version from the badge above.** We don't use `latest` because [you deserve reproducible deployments](https://vsupalov.com/docker-latest-tag/).
 
-Add to your Claude Desktop config (`~/Library/Application Support/Claude/claude_desktop_config.json` on macOS):
+Connect your MCP client to `http://localhost:5000/mcp` and start talking to your documents.
+
+### Option 2: Claude Desktop
+
+Add to your config file:
+
+| OS | Path |
+|----|------|
+| macOS | `~/Library/Application Support/Claude/claude_desktop_config.json` |
+| Windows | `%APPDATA%\Claude\claude_desktop_config.json` |
 
 ```json
 {
@@ -69,7 +114,7 @@ Add to your Claude Desktop config (`~/Library/Application Support/Claude/claude_
       "command": "dotnet",
       "args": ["run", "--project", "/path/to/PaperlessMCP/PaperlessMCP", "--", "--stdio"],
       "env": {
-        "PAPERLESS_BASE_URL": "https://your-paperless-instance.com",
+        "PAPERLESS_BASE_URL": "https://your-paperless.example.com",
         "PAPERLESS_API_TOKEN": "your-token-here"
       }
     }
@@ -77,134 +122,195 @@ Add to your Claude Desktop config (`~/Library/Application Support/Claude/claude_
 }
 ```
 
-### Docker
+Restart Claude Desktop. Look for the tools icon — Paperless should be there.
+
+### Option 3: Kubernetes
+
+For the homelabbers running k8s. We include ready-to-use manifests with Kustomize support.
 
 ```bash
-docker build -t paperless-mcp ./PaperlessMCP
-docker run -e PAPERLESS_BASE_URL=https://... -e PAPERLESS_API_TOKEN=... -p 5000:5000 paperless-mcp
+# Clone and customize
+git clone https://github.com/barryw/PaperlessMCP.git
+cd PaperlessMCP/k8s
+
+# Create your secrets
+kubectl create secret generic paperless-mcp \
+  --from-literal=PAPERLESS_BASE_URL=https://your-paperless.example.com
+
+kubectl create secret generic paperless-token \
+  --from-literal=token=your-api-token-here
+
+# Deploy (edit the image tag first)
+kubectl apply -k .
 ```
+
+[See the manifests](k8s/)
+
+Includes: Deployment, Service, Ingress, Kustomization. Tweak to taste.
+
+### Option 4: From Source
+
+For contributors and tinkerers:
+
+```bash
+git clone https://github.com/barryw/PaperlessMCP.git
+cd PaperlessMCP
+dotnet run --project PaperlessMCP             # HTTP/SSE on :5000
+dotnet run --project PaperlessMCP -- --stdio  # stdio mode
+```
+
+Requires [.NET 10 SDK](https://dotnet.microsoft.com/download/dotnet/10.0).
 
 ---
 
-## ⚙️ Configuration
+## The Full Toolbox
+
+43 tools, organized by what they touch. Every entity supports full CRUD.
+
+<details>
+<summary><strong>Documents</strong> — the main event</summary>
+
+| Tool | What it does |
+|------|--------------|
+| `paperless.documents.search` | Find documents with full-text search and filters |
+| `paperless.documents.get` | Get a document by ID with all metadata |
+| `paperless.documents.upload` | Upload a document (base64) |
+| `paperless.documents.upload_from_path` | Upload from a file path |
+| `paperless.documents.update` | Update title, tags, correspondent, etc. |
+| `paperless.documents.delete` | Delete a document (requires confirmation) |
+| `paperless.documents.bulk_update` | Update multiple documents at once |
+| `paperless.documents.download` | Get download URL for original file |
+| `paperless.documents.preview` | Get preview URL |
+| `paperless.documents.thumbnail` | Get thumbnail URL |
+| `paperless.documents.reprocess` | Re-run OCR on a document |
+
+</details>
+
+<details>
+<summary><strong>Tags</strong> — organize everything</summary>
+
+| Tool | What it does |
+|------|--------------|
+| `paperless.tags.list` | List all tags |
+| `paperless.tags.get` | Get a tag by ID |
+| `paperless.tags.create` | Create a tag with optional color and matching rules |
+| `paperless.tags.update` | Update a tag |
+| `paperless.tags.delete` | Delete a tag |
+| `paperless.tags.bulk_delete` | Delete multiple tags |
+
+</details>
+
+<details>
+<summary><strong>Correspondents</strong> — who sends you stuff</summary>
+
+| Tool | What it does |
+|------|--------------|
+| `paperless.correspondents.list` | List all correspondents |
+| `paperless.correspondents.get` | Get a correspondent by ID |
+| `paperless.correspondents.create` | Create with optional matching rules |
+| `paperless.correspondents.update` | Update a correspondent |
+| `paperless.correspondents.delete` | Delete a correspondent |
+| `paperless.correspondents.bulk_delete` | Delete multiple correspondents |
+
+</details>
+
+<details>
+<summary><strong>Document Types</strong> — invoices, receipts, contracts...</summary>
+
+| Tool | What it does |
+|------|--------------|
+| `paperless.document_types.list` | List all document types |
+| `paperless.document_types.get` | Get a document type by ID |
+| `paperless.document_types.create` | Create with optional matching rules |
+| `paperless.document_types.update` | Update a document type |
+| `paperless.document_types.delete` | Delete a document type |
+| `paperless.document_types.bulk_delete` | Delete multiple document types |
+
+</details>
+
+<details>
+<summary><strong>Storage Paths</strong> — where things live</summary>
+
+| Tool | What it does |
+|------|--------------|
+| `paperless.storage_paths.list` | List all storage paths |
+| `paperless.storage_paths.get` | Get a storage path by ID |
+| `paperless.storage_paths.create` | Create with path template |
+| `paperless.storage_paths.update` | Update a storage path |
+| `paperless.storage_paths.delete` | Delete a storage path |
+| `paperless.storage_paths.bulk_delete` | Delete multiple storage paths |
+
+</details>
+
+<details>
+<summary><strong>Custom Fields</strong> — your own metadata</summary>
+
+| Tool | What it does |
+|------|--------------|
+| `paperless.custom_fields.list` | List all custom field definitions |
+| `paperless.custom_fields.get` | Get a custom field by ID |
+| `paperless.custom_fields.create` | Create a field (string, date, number, monetary, etc.) |
+| `paperless.custom_fields.update` | Update a field definition |
+| `paperless.custom_fields.delete` | Delete a field |
+| `paperless.custom_fields.assign` | Assign a field value to a document |
+
+</details>
+
+<details>
+<summary><strong>Health</strong> — is it alive?</summary>
+
+| Tool | What it does |
+|------|--------------|
+| `paperless.ping` | Check connectivity and auth |
+| `paperless.capabilities` | List supported features |
+
+</details>
+
+---
+
+## Configuration
+
+Environment variables. That's it. No config files to manage.
 
 | Variable | Required | Default | Description |
-|----------|----------|---------|-------------|
-| `PAPERLESS_BASE_URL` | Yes | - | Base URL of your Paperless-ngx instance |
-| `PAPERLESS_API_TOKEN` | Yes | - | API authentication token |
-| `MAX_PAGE_SIZE` | No | 100 | Maximum items per page |
-| `MCP_PORT` | No | 5000 | HTTP server port (HTTP mode only) |
+|----------|:--------:|---------|-------------|
+| `PAPERLESS_BASE_URL` | Yes | — | Your Paperless-ngx URL |
+| `PAPERLESS_API_TOKEN` | Yes | — | API token for authentication |
+| `MCP_PORT` | | `5000` | Port for HTTP/SSE mode |
+| `MAX_PAGE_SIZE` | | `100` | Max items per paginated request |
 
-**Transport Modes:**
-- `dotnet run -- --stdio` — For Claude Desktop
-- `dotnet run` — HTTP mode at `http://localhost:5000/mcp`
+Aliases supported: `PAPERLESS_URL` and `PAPERLESS_TOKEN` also work if that's your style.
 
 ---
 
-## 💻 Usage
+## Contributing
 
-Once configured, ask Claude to interact with your documents:
-
-```
-"Search for all invoices from 2024"
-"Upload this PDF and tag it as 'Receipt'"
-"Show me documents tagged 'Important' with no correspondent"
-"Create a new tag called 'Urgent' with a red color"
-```
-
----
-
-## 📖 API Reference
-
-PaperlessMCP provides **43+ MCP tools** across these categories:
-
-| Category | Tools |
-|----------|-------|
-| Health | `ping`, `capabilities` |
-| Documents | `search`, `get`, `upload`, `upload_from_path`, `update`, `delete`, `bulk_update`, `download`, `preview`, `thumbnail`, `reprocess` |
-| Tags | `list`, `get`, `create`, `update`, `delete`, `bulk_delete` |
-| Correspondents | `list`, `get`, `create`, `update`, `delete`, `bulk_delete` |
-| Document Types | `list`, `get`, `create`, `update`, `delete`, `bulk_delete` |
-| Storage Paths | `list`, `get`, `create`, `update`, `delete`, `bulk_delete` |
-| Custom Fields | `list`, `get`, `create`, `update`, `delete`, `assign` |
-
-**[📚 Full API Reference →](docs/API_REFERENCE.md)**
-
----
-
-## 🛠️ Development
+Yes please. We use trunk-based development with conventional commits.
 
 ```bash
-dotnet restore      # Restore dependencies
-dotnet build        # Build
-dotnet test         # Run tests
+git clone https://github.com/barryw/PaperlessMCP.git
+cd PaperlessMCP
+dotnet build
+dotnet test
 ```
 
-### CI/CD
+**The rules:**
+- Conventional commits (`feat:`, `fix:`, `docs:`, etc.) — versions bump automatically
+- Tests pass or it doesn't merge
+- Destructive operations need `confirm=true` and dry-run by default
 
-This project uses [Woodpecker CI](https://woodpecker-ci.org/) with trunk-based development:
-
-| Event | Actions |
-|-------|---------|
-| **Pull Request** | Build → Test → Docker verify |
-| **Merge to main** | Build → Test → Version → Package → Docker → Tag → Release |
-
-**Automatic Versioning:** Version bumps are determined by [Conventional Commits](https://www.conventionalcommits.org/):
-
-| Commit Type | Version Bump | Example |
-|-------------|--------------|---------|
-| `fix:` | Patch (0.0.X) | `fix: handle null response` |
-| `feat:` | Minor (0.X.0) | `feat: add bulk export` |
-| `feat!:` | Major (X.0.0) | `feat!: change API format` |
-
-**Docker Images:**
-- `ghcr.io/barryw/paperlessmcp:latest` — Latest release
-- `ghcr.io/barryw/paperlessmcp:vX.Y.Z` — Specific version
-
-### Project Structure
-
-```
-PaperlessMCP/
-├── PaperlessMCP/           # Main application
-│   ├── Client/             # Paperless API client
-│   ├── Models/             # Data models
-│   ├── Tools/              # MCP tool implementations
-│   └── Program.cs          # Entry point
-├── PaperlessMCP.Tests/     # Test project
-└── docs/                   # Documentation
-```
+See [CONTRIBUTING.md](CONTRIBUTING.md) for the full rundown.
 
 ---
 
-## 🤝 Contributing
+## License
 
-Contributions welcome! We use trunk-based development with conventional commits.
-
-See **[CONTRIBUTING.md](CONTRIBUTING.md)** for guidelines on:
-- Commit message format
-- Pull request process
-- Local development setup
+[MIT](LICENSE) — do whatever you want, just don't blame me.
 
 ---
 
-## 📄 License
+## Acknowledgments
 
-MIT License - see [LICENSE](LICENSE) for details.
-
----
-
-## 🙏 Acknowledgments
-
-- [Paperless-ngx](https://github.com/paperless-ngx/paperless-ngx)
-- [Model Context Protocol](https://modelcontextprotocol.io/)
-- [Anthropic](https://www.anthropic.com/)
-
----
-
-<div align="center">
-
-**[⬆ back to top](#-paperlessmcp)**
-
-Made with ❤️ for the Paperless-ngx community
-
-</div>
+- [Paperless-ngx](https://github.com/paperless-ngx/paperless-ngx) — the document system that makes this worth building
+- [Model Context Protocol](https://modelcontextprotocol.io/) — the glue between AI and everything else
+- Everyone who's ever felt guilty about their untagged documents
