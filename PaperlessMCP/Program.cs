@@ -40,8 +40,9 @@ else
         .AddMcpServer()
         .WithHttpTransport(options =>
         {
-            // Increase idle timeout to 24 hours to prevent session drops during long operations
-            options.IdleTimeout = TimeSpan.FromHours(24);
+            // Disable idle timeout completely - sessions should never be killed due to inactivity
+            // The SDK's IdleTrackingBackgroundService respects InfiniteTimeSpan to skip idle-based pruning
+            options.IdleTimeout = Timeout.InfiniteTimeSpan;
         })
         .WithToolsFromAssembly();
 
@@ -52,7 +53,7 @@ else
 
     app.MapMcp("/mcp");
 
-    app.Logger.LogInformation("PaperlessMCP server starting on port {Port}", port);
+    app.Logger.LogInformation("PaperlessMCP server starting on port {Port} with infinite session timeout", port);
     app.Logger.LogInformation("MCP endpoint available at: http://localhost:{Port}/mcp", port);
 
     await app.RunAsync($"http://0.0.0.0:{port}");
