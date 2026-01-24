@@ -124,7 +124,31 @@ Add to your config file:
 
 Restart Claude Desktop. Look for the tools icon — Paperless should be there.
 
-### Option 3: Kubernetes
+### Option 3: Claude Code
+
+One command if you're already running the server somewhere:
+
+```bash
+# Connect to a running HTTP/SSE server
+claude mcp add --transport sse paperless http://localhost:5000/mcp
+```
+
+Or run from source with stdio:
+
+```bash
+claude mcp add --transport stdio paperless \
+  -e PAPERLESS_BASE_URL=https://your-paperless.example.com \
+  -e PAPERLESS_API_TOKEN=your-token-here \
+  -- dotnet run --project /path/to/PaperlessMCP/PaperlessMCP -- --stdio
+```
+
+Verify it's there:
+
+```bash
+claude mcp list
+```
+
+### Option 4: Kubernetes
 
 For the homelabbers running k8s. We include ready-to-use manifests with Kustomize support.
 
@@ -148,7 +172,7 @@ kubectl apply -k .
 
 Includes: Deployment, Service, Ingress, Kustomization. Tweak to taste.
 
-### Option 4: From Source
+### Option 5: From Source
 
 For contributors and tinkerers:
 
