@@ -268,7 +268,29 @@ steps:
           -n default
 
         # Wait for rollout to complete
-        kubectl rollout status deployment/paperless-mcp -n default --timeout=120s
+        if ! kubectl rollout status deployment/paperless-mcp -n default --timeout=120s; then
+          echo ""
+          echo "========== DEPLOYMENT FAILED =========="
+          echo ""
+          echo "=== Pod Status ==="
+          kubectl get pods -n default -l app=paperless-mcp
+          echo ""
+          echo "=== Recent Events ==="
+          kubectl get events -n default --sort-by='.lastTimestamp' \
+            --field-selector involvedObject.kind=Pod 2>/dev/null | grep paperless-mcp | tail -10
+          echo ""
+          echo "=== Pod Describe (problematic pods) ==="
+          for pod in $(kubectl get pods -n default -l app=paperless-mcp -o jsonpath='{.items[?(@.status.phase!="Running")].metadata.name}'); do
+            echo "--- $pod ---"
+            kubectl describe pod "$pod" -n default | tail -20
+          done
+          echo ""
+          echo "=== Container Logs ==="
+          kubectl logs -n default -l app=paperless-mcp --tail=30 --all-containers 2>/dev/null || echo "No logs available"
+          echo ""
+          echo "========================================"
+          exit 1
+        fi
 
         echo "Deployment complete!"
     depends_on: [docker, release]
