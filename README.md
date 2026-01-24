@@ -307,6 +307,17 @@ Aliases supported: `PAPERLESS_URL` and `PAPERLESS_TOKEN` also work if that's you
 
 ---
 
+## Support the Project
+
+If PaperlessMCP saves you time, consider supporting development:
+
+[![GitHub Sponsors](https://img.shields.io/github/sponsors/barryw?style=for-the-badge&logo=github&label=Sponsor)](https://github.com/sponsors/barryw)
+[![Ko-fi](https://img.shields.io/badge/Ko--fi-Support-ff5e5b?style=for-the-badge&logo=ko-fi)](https://ko-fi.com/barryw)
+
+Every bit helps keep the lights on and the commits flowing.
+
+---
+
 ## Contributing
 
 Yes please. We use trunk-based development with conventional commits.
