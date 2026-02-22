@@ -391,7 +391,7 @@ public class PaperlessClient
     /// <summary>
     /// Performs bulk edit operations on documents.
     /// </summary>
-    public async Task<bool> BulkEditDocumentsAsync(
+    public async Task<(bool Success, string? Error)> BulkEditDocumentsAsync(
         int[] documentIds,
         string method,
         object? parameters = null,
@@ -406,13 +406,24 @@ public class PaperlessClient
 
         try
         {
+            var body = JsonSerializer.Serialize(request, JsonOptions);
+            _logger.LogInformation("POST api/documents/bulk_edit/ with body: {Body}", body);
+
             var response = await _httpClient.PostAsJsonAsync("api/documents/bulk_edit/", request, JsonOptions, cancellationToken).ConfigureAwait(false);
-            return response.IsSuccessStatusCode;
+            
+            if (response.IsSuccessStatusCode)
+            {
+                return (true, null);
+            }
+
+            var errorBody = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
+            _logger.LogError("Bulk edit failed: {StatusCode} {Reason} - {Body}", response.StatusCode, response.ReasonPhrase, errorBody);
+            return (false, $"HTTP {response.StatusCode}: {errorBody}");
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Failed to perform bulk edit");
-            return false;
+            return (false, ex.Message);
         }
     }
 
