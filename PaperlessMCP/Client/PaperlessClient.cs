@@ -1,5 +1,6 @@
 using System.Net;
 using System.Net.Http.Json;
+using System.Text;
 using System.Text.Json;
 using System.Web;
 using Microsoft.Extensions.Logging;
@@ -397,19 +398,23 @@ public class PaperlessClient
         object? parameters = null,
         CancellationToken cancellationToken = default)
     {
-        var request = new
+        var request = new BulkEditRequest
         {
-            documents = documentIds,
-            method,
-            parameters
+            Documents = documentIds,
+            Method = method,
+            Parameters = parameters
         };
 
         try
         {
-            var body = JsonSerializer.Serialize(request, JsonOptions);
-            _logger.LogInformation("POST api/documents/bulk_edit/ with body: {Body}", body);
+            // Use manual serialization and StringContent to be as explicit as possible (mimic curl)
+            var json = JsonSerializer.Serialize(request, JsonOptions);
+            var content = new StringContent(json, Encoding.UTF8, "application/json");
 
-            var response = await _httpClient.PostAsJsonAsync("api/documents/bulk_edit/", request, JsonOptions, cancellationToken).ConfigureAwait(false);
+            var requestUri = new Uri(_httpClient.BaseAddress!, "api/documents/bulk_edit/");
+            _logger.LogInformation("MANUAL POST to {Url} with body: {Json}", requestUri, json);
+
+            var response = await _httpClient.PostAsync("api/documents/bulk_edit/", content, cancellationToken).ConfigureAwait(false);
             
             if (response.IsSuccessStatusCode)
             {
@@ -417,7 +422,8 @@ public class PaperlessClient
             }
 
             var errorBody = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
-            _logger.LogError("Bulk edit failed: {StatusCode} {Reason} - {Body}", response.StatusCode, response.ReasonPhrase, errorBody);
+            _logger.LogError("Bulk edit failed: {StatusCode} {Reason} - {Body} (Full Request: {Method} {Url})", 
+                response.StatusCode, response.ReasonPhrase, errorBody, response.RequestMessage?.Method, response.RequestMessage?.RequestUri);
             return (false, $"HTTP {response.StatusCode}: {errorBody}");
         }
         catch (Exception ex)
@@ -696,7 +702,8 @@ public class PaperlessClient
         {
             var body = JsonSerializer.Serialize(request, request.GetType(), JsonOptions);
             _logger.LogInformation("POST {Url} with body: {Body}", url, body);
-            var response = await _httpClient.PostAsJsonAsync(url, request, JsonOptions, cancellationToken).ConfigureAwait(false);
+            var content = new StringContent(body, Encoding.UTF8, "application/json");
+            var response = await _httpClient.PostAsync(url, content, cancellationToken).ConfigureAwait(false);
 
             if (response.IsSuccessStatusCode)
             {
@@ -722,7 +729,8 @@ public class PaperlessClient
         {
             var body = JsonSerializer.Serialize(request, request.GetType(), JsonOptions);
             _logger.LogInformation("PATCH {Url} with body: {Body}", url, body);
-            var response = await _httpClient.PatchAsJsonAsync(url, request, JsonOptions, cancellationToken).ConfigureAwait(false);
+            var content = new StringContent(body, Encoding.UTF8, "application/json");
+            var response = await _httpClient.PatchAsync(url, content, cancellationToken).ConfigureAwait(false);
 
             if (response.IsSuccessStatusCode)
             {
