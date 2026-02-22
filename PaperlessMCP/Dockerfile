@@ -9,7 +9,7 @@ RUN dotnet restore
 
 # Copy source code and build
 COPY . .
-RUN dotnet publish -c Release -o /app/publish /p:Version=${VERSION:-0.0.1-dev} -v n
+RUN dotnet publish PaperlessMCP.csproj -c Release -o /app/publish /p:Version=${VERSION} -v n
 
 # Runtime stage
 FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS runtime
