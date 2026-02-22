@@ -683,7 +683,10 @@ public class PaperlessClient
     {
         try
         {
-            var response = await _httpClient.PostAsJsonAsync(url, request, JsonOptions, cancellationToken).ConfigureAwait(false);
+            var content = JsonContent.Create(request, request.GetType(), options: JsonOptions);
+            var body = await content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
+            _logger.LogInformation("POST {Url} with body: {Body}", url, body);
+            var response = await _httpClient.PostAsync(url, content, cancellationToken).ConfigureAwait(false);
 
             if (response.IsSuccessStatusCode)
             {
@@ -707,7 +710,9 @@ public class PaperlessClient
     {
         try
         {
-            var content = JsonContent.Create(request, options: JsonOptions);
+            var content = JsonContent.Create(request, request.GetType(), options: JsonOptions);
+            var body = await content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
+            _logger.LogInformation("PATCH {Url} with body: {Body}", url, body);
             var response = await _httpClient.PatchAsync(url, content, cancellationToken).ConfigureAwait(false);
 
             if (response.IsSuccessStatusCode)
