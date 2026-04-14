@@ -2,6 +2,12 @@
 All notable changes to this project will be documented in this file. See [conventional commits](https://www.conventionalcommits.org/) for commit guidelines.
 
 - - -
+## [v0.2.1](https://github.com/barryw/PaperlessMCP/compare/441eeebd2ebc0e3e052c643af03e9cd3f1cee21b..v0.2.1) - 2026-04-14
+#### Tests
+- add regression tests for MCP tool naming convention - ([441eeeb](https://github.com/barryw/PaperlessMCP/commit/441eeebd2ebc0e3e052c643af03e9cd3f1cee21b)) - zagah
+
+- - -
+
 ## [v0.2.0](https://github.com/barryw/PaperlessMCP/compare/v0.1.18-alpha..v0.2.0) - 2026-04-12
 #### Features
 - add GitHub Action for Docker build and push to GHCR - ([00079f5](https://github.com/barryw/PaperlessMCP/commit/00079f5285f38bc6b590148210db067f4b132d6a)) - zagah
